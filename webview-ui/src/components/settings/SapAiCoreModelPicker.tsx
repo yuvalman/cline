@@ -55,10 +55,10 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	const fuse = useMemo(() => {
 		return new Fuse(searchableItems, {
 			keys: ["html"],
-			threshold: 0.6,
+			threshold: 0.8,
 			shouldSort: true,
 			isCaseSensitive: false,
-			ignoreLocation: false,
+			ignoreLocation: true,
 			includeMatches: true,
 			minMatchCharLength: 1,
 		})
