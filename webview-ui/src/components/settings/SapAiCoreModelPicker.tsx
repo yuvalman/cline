@@ -20,7 +20,7 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	onModelChange,
 	placeholder = "Search and select a model...",
 }) => {
-	const [searchTerm, setSearchTerm] = useState(selectedModelId || "")
+	const [searchTerm, setSearchTerm] = useState("")
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
 	const dropdownRef = useRef<HTMLDivElement>(null)
@@ -65,7 +65,18 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	}, [searchableItems])
 
 	const modelSearchResults = useMemo(() => {
-		return searchTerm ? highlight(fuse.search(searchTerm), "sap-ai-core-model-item-highlight") : searchableItems
+		if (!searchTerm) {
+			return searchableItems
+		}
+
+		// Get search results for highlighting
+		const searchResults = highlight(fuse.search(searchTerm), "sap-ai-core-model-item-highlight")
+
+		// Create a map of search results for quick lookup
+		const searchResultsMap = new Map(searchResults.map((item) => [item.id, item]))
+
+		// Return all items, but use highlighted versions where available
+		return searchableItems.map((item) => searchResultsMap.get(item.id) || item)
 	}, [searchableItems, searchTerm, fuse])
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -109,13 +120,6 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 			})
 		}
 	}, [selectedIndex])
-
-	// Update search term when selectedModelId changes externally
-	useEffect(() => {
-		if (selectedModelId !== searchTerm) {
-			setSearchTerm(selectedModelId || "")
-		}
-	}, [selectedModelId])
 
 	return (
 		<div style={{ width: "100%" }}>
