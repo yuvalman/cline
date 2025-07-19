@@ -1,12 +1,14 @@
-import { sapAiCoreModels } from "@shared/api"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { DebouncedTextField } from "../common/DebouncedTextField"
-import { ModelSelector } from "../common/ModelSelector"
 import { ModelInfoView } from "../common/ModelInfoView"
 import { normalizeApiConfiguration } from "../utils/providerUtils"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { Mode } from "@shared/ChatSettings"
+import SapAiCoreModelPicker from "../SapAiCoreModelPicker"
+import { ModelsServiceClient } from "@/services/grpc-client"
+import { SapAiCoreModelsRequest } from "@shared/proto/models"
+import { useCallback, useEffect, useState } from "react"
 
 /**
  * Props for the SapAiCoreProvider component
@@ -25,6 +27,76 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 	const { handleFieldChange, handleModeFieldChange } = useApiConfigurationHandlers()
 
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
+
+	// State for dynamic model fetching
+	const [sapAiCoreModelsArray, setSapAiCoreModelsArray] = useState<string[]>([])
+	const [isLoadingModels, setIsLoadingModels] = useState(false)
+	const [modelError, setModelError] = useState<string | null>(null)
+
+	// Function to fetch SAP AI Core models
+	const fetchSapAiCoreModels = useCallback(async () => {
+		if (
+			!apiConfiguration?.sapAiCoreClientId ||
+			!apiConfiguration?.sapAiCoreClientSecret ||
+			!apiConfiguration?.sapAiCoreBaseUrl
+		) {
+			setSapAiCoreModelsArray([])
+			return
+		}
+
+		setIsLoadingModels(true)
+		setModelError(null)
+
+		try {
+			const response = await ModelsServiceClient.getSapAiCoreModels(
+				SapAiCoreModelsRequest.create({
+					clientId: apiConfiguration.sapAiCoreClientId,
+					clientSecret: apiConfiguration.sapAiCoreClientSecret,
+					baseUrl: apiConfiguration.sapAiCoreBaseUrl,
+					tokenUrl: apiConfiguration.sapAiCoreTokenUrl,
+					resourceGroup: apiConfiguration.sapAiResourceGroup,
+				}),
+			)
+
+			if (response && response.values) {
+				setSapAiCoreModelsArray(response.values)
+			} else {
+				setSapAiCoreModelsArray([])
+			}
+		} catch (error) {
+			console.error("Error fetching SAP AI Core models:", error)
+			setModelError("Failed to fetch models. Please check your configuration.")
+			setSapAiCoreModelsArray([])
+		} finally {
+			setIsLoadingModels(false)
+		}
+	}, [
+		apiConfiguration?.sapAiCoreClientId,
+		apiConfiguration?.sapAiCoreClientSecret,
+		apiConfiguration?.sapAiCoreBaseUrl,
+		apiConfiguration?.sapAiCoreTokenUrl,
+		apiConfiguration?.sapAiResourceGroup,
+	])
+
+	// Fetch models when configuration changes
+	useEffect(() => {
+		if (
+			showModelOptions &&
+			apiConfiguration?.sapAiCoreClientId &&
+			apiConfiguration?.sapAiCoreClientSecret &&
+			apiConfiguration?.sapAiCoreBaseUrl
+		) {
+			fetchSapAiCoreModels()
+		}
+	}, [showModelOptions, fetchSapAiCoreModels])
+
+	// Handle model selection
+	const handleModelChange = useCallback(
+		(modelId: string) => {
+			handleModeFieldChange({ plan: "planModeApiModelId", act: "actModeApiModelId" }, modelId, currentMode)
+		},
+		[handleModeFieldChange, currentMode],
+	)
 
 	return (
 		<div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -96,18 +168,47 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 
 			{showModelOptions && (
 				<>
-					<ModelSelector
-						models={sapAiCoreModels}
-						selectedModelId={selectedModelId}
-						onChange={(e: any) =>
-							handleModeFieldChange(
-								{ plan: "planModeApiModelId", act: "actModeApiModelId" },
-								e.target.value,
-								currentMode,
-							)
-						}
-						label="Model"
-					/>
+					<div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+						<span style={{ fontWeight: 500 }}>Model</span>
+						{isLoadingModels ? (
+							<div style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}>
+								Loading models...
+							</div>
+						) : modelError ? (
+							<div style={{ fontSize: "12px", color: "var(--vscode-errorForeground)" }}>
+								{modelError}
+								<button
+									onClick={fetchSapAiCoreModels}
+									style={{
+										marginLeft: "8px",
+										fontSize: "11px",
+										padding: "2px 6px",
+										background: "var(--vscode-button-background)",
+										color: "var(--vscode-button-foreground)",
+										border: "none",
+										borderRadius: "2px",
+										cursor: "pointer",
+									}}>
+									Retry
+								</button>
+							</div>
+						) : sapAiCoreModelsArray.length > 0 ? (
+							<SapAiCoreModelPicker
+								sapAiCoreModels={sapAiCoreModelsArray}
+								selectedModelId={selectedModelId || ""}
+								onModelChange={handleModelChange}
+								placeholder="Search and select a deployment..."
+							/>
+						) : (
+							<div style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}>
+								{apiConfiguration?.sapAiCoreClientId &&
+								apiConfiguration?.sapAiCoreClientSecret &&
+								apiConfiguration?.sapAiCoreBaseUrl
+									? "No running deployments found. Please check your SAP AI Core configuration."
+									: "Please configure your SAP AI Core credentials to see available models."}
+							</div>
+						)}
+					</div>
 
 					<ModelInfoView selectedModelId={selectedModelId} modelInfo={selectedModelInfo} isPopup={isPopup} />
 				</>
