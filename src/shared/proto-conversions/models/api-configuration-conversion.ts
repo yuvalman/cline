@@ -404,6 +404,7 @@ export function convertApiConfigurationToProto(config: ApiConfiguration): ProtoA
 		planModeHuggingFaceModelId: config.planModeHuggingFaceModelId,
 		planModeHuggingFaceModelInfo: convertModelInfoToProtoOpenRouter(config.planModeHuggingFaceModelInfo),
 		planModeSapAiCoreModelId: config.planModeSapAiCoreModelId,
+		planModeSapAiCoreDeploymentId: config.planModeSapAiCoreDeploymentId,
 
 		// Act mode configurations
 		actModeApiProvider: config.actModeApiProvider ? convertApiProviderToProto(config.actModeApiProvider) : undefined,
@@ -430,6 +431,7 @@ export function convertApiConfigurationToProto(config: ApiConfiguration): ProtoA
 		actModeHuggingFaceModelId: config.actModeHuggingFaceModelId,
 		actModeHuggingFaceModelInfo: convertModelInfoToProtoOpenRouter(config.actModeHuggingFaceModelInfo),
 		actModeSapAiCoreModelId: config.actModeSapAiCoreModelId,
+		actModeSapAiCoreDeploymentId: config.actModeSapAiCoreDeploymentId,
 
 		// Favorited model IDs
 		favoritedModelIds: config.favoritedModelIds || [],
@@ -528,6 +530,7 @@ export function convertProtoToApiConfiguration(protoConfig: ProtoApiConfiguratio
 		planModeHuggingFaceModelId: protoConfig.planModeHuggingFaceModelId,
 		planModeHuggingFaceModelInfo: convertProtoToModelInfo(protoConfig.planModeHuggingFaceModelInfo),
 		planModeSapAiCoreModelId: protoConfig.planModeSapAiCoreModelId,
+		planModeSapAiCoreDeploymentId: protoConfig.planModeSapAiCoreDeploymentId,
 
 		// Act mode configurations
 		actModeApiProvider:
@@ -555,6 +558,7 @@ export function convertProtoToApiConfiguration(protoConfig: ProtoApiConfiguratio
 		actModeHuggingFaceModelId: protoConfig.actModeHuggingFaceModelId,
 		actModeHuggingFaceModelInfo: convertProtoToModelInfo(protoConfig.actModeHuggingFaceModelInfo),
 		actModeSapAiCoreModelId: protoConfig.actModeSapAiCoreModelId,
+		actModeSapAiCoreDeploymentId: protoConfig.actModeSapAiCoreDeploymentId,
 
 		// Favorited model IDs
 		favoritedModelIds:

@@ -3,18 +3,19 @@ import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
 import React, { KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
+import { SapAiCoreModelDeployment } from "@shared/proto/models"
 
 export const SAP_AI_CORE_MODEL_PICKER_Z_INDEX = 1_000
 
 export interface SapAiCoreModelPickerProps {
-	sapAiCoreModels: string[]
+	sapAiCoreModelDeployments: SapAiCoreModelDeployment[]
 	selectedModelId: string
-	onModelChange: (modelId: string) => void
+	onModelChange: (modelId: string, deploymentId: string) => void
 	placeholder?: string
 }
 
 const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
-	sapAiCoreModels,
+	sapAiCoreModelDeployments,
 	selectedModelId,
 	onModelChange,
 	placeholder = "Search and select a model...",
@@ -26,9 +27,9 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	const itemRefs = useRef<(HTMLDivElement | null)[]>([])
 	const dropdownListRef = useRef<HTMLDivElement>(null)
 
-	const handleModelChange = (newModelId: string) => {
-		onModelChange(newModelId)
-		setSearchTerm(newModelId)
+	const handleModelChange = (modelDeployment: SapAiCoreModelDeployment) => {
+		onModelChange(modelDeployment.modelName, modelDeployment.deploymentId)
+		setSearchTerm(modelDeployment.modelName)
 	}
 
 	useEffect(() => {
@@ -45,23 +46,24 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	}, [])
 
 	const fuse = useMemo(() => {
-		return new Fuse(sapAiCoreModels, {
+		return new Fuse(sapAiCoreModelDeployments, {
+			keys: ["modelName"], // Search by model name
 			threshold: 0.8,
 			shouldSort: true,
 			isCaseSensitive: false,
 			ignoreLocation: true,
 			minMatchCharLength: 1,
 		})
-	}, [sapAiCoreModels])
+	}, [sapAiCoreModelDeployments])
 
 	const modelSearchResults = useMemo(() => {
 		if (!searchTerm) {
-			return sapAiCoreModels
+			return sapAiCoreModelDeployments
 		}
 
 		const searchResults = fuse.search(searchTerm)
 		return searchResults.map((result) => result.item)
-	}, [sapAiCoreModels, searchTerm, fuse])
+	}, [sapAiCoreModelDeployments, searchTerm, fuse])
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (!isDropdownVisible) return
@@ -114,7 +116,7 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 					value={searchTerm}
 					onInput={(e) => {
 						const value = (e.target as HTMLInputElement)?.value || ""
-						handleModelChange(value)
+						setSearchTerm(value)
 						setIsDropdownVisible(true)
 					}}
 					onFocus={() => setIsDropdownVisible(true)}
@@ -129,7 +131,7 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 							className="input-icon-button codicon codicon-close"
 							aria-label="Clear search"
 							onClick={() => {
-								handleModelChange("")
+								setSearchTerm("")
 								setIsDropdownVisible(true)
 							}}
 							slot="end"
@@ -146,7 +148,7 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 					<DropdownList ref={dropdownListRef}>
 						{modelSearchResults.map((item, index) => (
 							<DropdownItem
-								key={item}
+								key={`${item.modelName}-${item.deploymentId}`}
 								ref={(el) => (itemRefs.current[index] = el)}
 								isSelected={index === selectedIndex}
 								onMouseEnter={() => setSelectedIndex(index)}
@@ -154,7 +156,7 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 									handleModelChange(item)
 									setIsDropdownVisible(false)
 								}}>
-								<span>{item}</span>
+								<span>{item.modelName}</span>
 							</DropdownItem>
 						))}
 					</DropdownList>

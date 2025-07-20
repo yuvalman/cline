@@ -13,6 +13,7 @@ interface SapAiCoreHandlerOptions {
 	sapAiResourceGroup?: string
 	sapAiCoreBaseUrl?: string
 	apiModelId?: string
+	sapAiCoreDeploymentId?: string
 }
 
 interface Deployment {
@@ -130,7 +131,11 @@ export class SapAiCoreHandler implements ApiHandler {
 		}
 
 		const model = this.getModel()
-		const deploymentId = await this.getDeploymentForModel(model.id)
+		const deploymentId = this.options.sapAiCoreDeploymentId
+
+		if (!deploymentId) {
+			throw new Error("SAP AI Core deployment ID is required but not provided")
+		}
 
 		const anthropicModels = [
 			"anthropic--claude-4-sonnet",

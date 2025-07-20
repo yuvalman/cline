@@ -263,6 +263,8 @@ function createHandlerForProvider(
 				sapAiResourceGroup: options.sapAiResourceGroup,
 				sapAiCoreBaseUrl: options.sapAiCoreBaseUrl,
 				apiModelId: mode === "plan" ? options.planModeApiModelId : options.actModeApiModelId,
+				sapAiCoreDeploymentId:
+					mode === "plan" ? options.planModeSapAiCoreDeploymentId : options.actModeSapAiCoreDeploymentId,
 			})
 		case "claude-code":
 			return new ClaudeCodeHandler({

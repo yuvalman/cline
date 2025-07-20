@@ -1,20 +1,22 @@
 import { Controller } from ".."
-import { StringArray } from "../../../shared/proto/common"
-import { SapAiCoreModelsRequest } from "../../../shared/proto/models"
+import { SapAiCoreModelsRequest, SapAiCoreModelDeploymentArray, SapAiCoreModelDeployment } from "../../../shared/proto/models"
 import { SapAiCoreHandler } from "../../../api/providers/sapaicore"
 
 /**
  * Fetches available models from SAP AI Core deployments
  * @param controller The controller instance
  * @param request The request containing SAP AI Core configuration
- * @returns Array of deployment model names
+ * @returns Array of model-deployment pairs
  */
-export async function getSapAiCoreModels(controller: Controller, request: SapAiCoreModelsRequest): Promise<StringArray> {
+export async function getSapAiCoreModels(
+	controller: Controller,
+	request: SapAiCoreModelsRequest,
+): Promise<SapAiCoreModelDeploymentArray> {
 	try {
 		// Check if required configuration is provided
 		if (!request.clientId || !request.clientSecret || !request.baseUrl) {
 			// Return empty array if configuration is incomplete
-			return StringArray.create({ values: [] })
+			return SapAiCoreModelDeploymentArray.create({ deployments: [] })
 		}
 
 		// Create SAP AI Core handler with provided configuration
@@ -30,12 +32,20 @@ export async function getSapAiCoreModels(controller: Controller, request: SapAiC
 		// Since it's private, we need to access it through the handler instance
 		const deployments = await (sapAiCoreHandler as any).getAiCoreDeployments()
 
-		// Extract model names from deployments
-		const modelNames = deployments.map((deployment: any) => deployment.name.split(":")[0].toLowerCase()).sort()
+		// Create model-deployment pairs
+		const modelDeployments = deployments
+			.map((deployment: any) => {
+				const modelName = deployment.name.split(":")[0].toLowerCase()
+				return SapAiCoreModelDeployment.create({
+					modelName: modelName,
+					deploymentId: deployment.id,
+				})
+			})
+			.sort((a: any, b: any) => a.modelName.localeCompare(b.modelName))
 
-		return StringArray.create({ values: modelNames })
+		return SapAiCoreModelDeploymentArray.create({ deployments: modelDeployments })
 	} catch (error) {
 		console.error("Error fetching SAP AI Core models:", error)
-		return StringArray.create({ values: [] })
+		return SapAiCoreModelDeploymentArray.create({ deployments: [] })
 	}
 }

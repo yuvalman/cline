@@ -7,7 +7,7 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { Mode } from "@shared/ChatSettings"
 import SapAiCoreModelPicker from "../SapAiCoreModelPicker"
 import { ModelsServiceClient } from "@/services/grpc-client"
-import { SapAiCoreModelsRequest } from "@shared/proto/models"
+import { SapAiCoreModelsRequest, SapAiCoreModelDeployment } from "@shared/proto/models"
 import { useCallback, useEffect, useState } from "react"
 
 /**
@@ -24,12 +24,12 @@ interface SapAiCoreProviderProps {
  */
 export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: SapAiCoreProviderProps) => {
 	const { apiConfiguration } = useExtensionState()
-	const { handleFieldChange, handleModeFieldChange } = useApiConfigurationHandlers()
+	const { handleFieldChange, handleModeFieldChange, handleModeFieldsChange } = useApiConfigurationHandlers()
 
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
 
 	// State for dynamic model fetching
-	const [sapAiCoreModelsArray, setSapAiCoreModelsArray] = useState<string[]>([])
+	const [sapAiCoreModelDeployments, setSapAiCoreModelDeployments] = useState<SapAiCoreModelDeployment[]>([])
 	const [isLoadingModels, setIsLoadingModels] = useState(false)
 	const [modelError, setModelError] = useState<string | null>(null)
 
@@ -40,7 +40,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			!apiConfiguration?.sapAiCoreClientSecret ||
 			!apiConfiguration?.sapAiCoreBaseUrl
 		) {
-			setSapAiCoreModelsArray([])
+			setSapAiCoreModelDeployments([])
 			return
 		}
 
@@ -58,15 +58,15 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 				}),
 			)
 
-			if (response && response.values) {
-				setSapAiCoreModelsArray(response.values)
+			if (response && response.deployments) {
+				setSapAiCoreModelDeployments(response.deployments)
 			} else {
-				setSapAiCoreModelsArray([])
+				setSapAiCoreModelDeployments([])
 			}
 		} catch (error) {
 			console.error("Error fetching SAP AI Core models:", error)
 			setModelError("Failed to fetch models. Please check your configuration.")
-			setSapAiCoreModelsArray([])
+			setSapAiCoreModelDeployments([])
 		} finally {
 			setIsLoadingModels(false)
 		}
@@ -90,12 +90,20 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		}
 	}, [showModelOptions, fetchSapAiCoreModels])
 
-	// Handle model selection
+	// Handle model selection - now includes both model ID and deployment ID
 	const handleModelChange = useCallback(
-		(modelId: string) => {
-			handleModeFieldChange({ plan: "planModeApiModelId", act: "actModeApiModelId" }, modelId, currentMode)
+		(modelId: string, deploymentId: string) => {
+			// Update both model ID and deployment ID atomically
+			handleModeFieldsChange(
+				{
+					modelId: { plan: "planModeApiModelId", act: "actModeApiModelId" },
+					deploymentId: { plan: "planModeSapAiCoreDeploymentId", act: "actModeSapAiCoreDeploymentId" },
+				},
+				{ modelId, deploymentId },
+				currentMode,
+			)
 		},
-		[handleModeFieldChange, currentMode],
+		[handleModeFieldsChange, currentMode],
 	)
 
 	return (
@@ -192,9 +200,9 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 									Retry
 								</button>
 							</div>
-						) : sapAiCoreModelsArray.length > 0 ? (
+						) : sapAiCoreModelDeployments.length > 0 ? (
 							<SapAiCoreModelPicker
-								sapAiCoreModels={sapAiCoreModelsArray}
+								sapAiCoreModelDeployments={sapAiCoreModelDeployments}
 								selectedModelId={selectedModelId || ""}
 								onModelChange={handleModelChange}
 								placeholder="Search and select a deployment..."

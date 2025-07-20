@@ -113,6 +113,7 @@ export interface ApiHandlerOptions {
 	planModeTogetherModelId?: string
 	planModeFireworksModelId?: string
 	planModeSapAiCoreModelId?: string
+	planModeSapAiCoreDeploymentId?: string
 	planModeGroqModelId?: string
 	planModeGroqModelInfo?: ModelInfo
 	planModeHuggingFaceModelId?: string
@@ -138,6 +139,7 @@ export interface ApiHandlerOptions {
 	actModeTogetherModelId?: string
 	actModeFireworksModelId?: string
 	actModeSapAiCoreModelId?: string
+	actModeSapAiCoreDeploymentId?: string
 	actModeGroqModelId?: string
 	actModeGroqModelInfo?: ModelInfo
 	actModeHuggingFaceModelId?: string

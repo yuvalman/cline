@@ -28,7 +28,7 @@ service ModelsService {
    // Refreshes and returns Groq models
   rpc refreshGroqModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
   // Fetches available models from SAP AI Core
-  rpc getSapAiCoreModels(SapAiCoreModelsRequest) returns (StringArray);
+  rpc getSapAiCoreModels(SapAiCoreModelsRequest) returns (SapAiCoreModelDeploymentArray);
 }
 
 // List of VS Code LM models
@@ -92,6 +92,17 @@ message OpenAiModelsRequest {
   Metadata metadata = 1;
   string base_url = 2;
   string api_key = 3;
+}
+
+// SAP AI Core model with deployment information
+message SapAiCoreModelDeployment {
+  string model_name = 1;
+  string deployment_id = 2;
+}
+
+// Array of SAP AI Core model deployments
+message SapAiCoreModelDeploymentArray {
+  repeated SapAiCoreModelDeployment deployments = 1;
 }
 
 // Request for fetching SAP AI Core models
@@ -263,6 +274,7 @@ message ModelsApiConfiguration {
   optional string plan_mode_together_model_id = 117;
   optional string plan_mode_fireworks_model_id = 118;
   optional string plan_mode_sap_ai_core_model_id = 119;
+  optional string plan_mode_sap_ai_core_deployment_id = 124;
   optional string plan_mode_groq_model_id = 120;
   optional OpenRouterModelInfo plan_mode_groq_model_info = 121;
   optional string plan_mode_hugging_face_model_id = 122;
@@ -289,6 +301,7 @@ message ModelsApiConfiguration {
   optional string act_mode_together_model_id = 217;
   optional string act_mode_fireworks_model_id = 218;
   optional string act_mode_sap_ai_core_model_id = 219;
+  optional string act_mode_sap_ai_core_deployment_id = 224;
   optional string act_mode_groq_model_id = 220;
   optional OpenRouterModelInfo act_mode_groq_model_info = 221;
   optional string act_mode_hugging_face_model_id = 222;
