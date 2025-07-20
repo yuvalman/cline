@@ -59,7 +59,6 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 			return sapAiCoreModels
 		}
 
-		// Get search results without highlighting
 		const searchResults = fuse.search(searchTerm)
 		return searchResults.map((result) => result.item)
 	}, [sapAiCoreModels, searchTerm, fuse])
