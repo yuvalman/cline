@@ -1,6 +1,87 @@
+import axios from "axios"
 import { Controller } from ".."
 import { SapAiCoreModelsRequest, SapAiCoreModelDeploymentArray, SapAiCoreModelDeployment } from "../../../shared/proto/models"
-import { SapAiCoreHandler } from "../../../api/providers/sapaicore"
+
+interface Token {
+	access_token: string
+	expires_in: number
+	scope: string
+	jti: string
+	token_type: string
+	expires_at: number
+}
+
+interface Deployment {
+	id: string
+	name: string
+}
+
+/**
+ * Authenticates with SAP AI Core and returns an access token
+ * @param clientId SAP AI Core client ID
+ * @param clientSecret SAP AI Core client secret
+ * @param tokenUrl SAP AI Core token URL
+ * @returns Promise<Token> Access token with metadata
+ */
+async function authenticate(clientId: string, clientSecret: string, tokenUrl: string): Promise<Token> {
+	const payload = {
+		grant_type: "client_credentials",
+		client_id: clientId,
+		client_secret: clientSecret,
+	}
+
+	const url = tokenUrl.replace(/\/+$/, "") + "/oauth/token"
+	const response = await axios.post(url, payload, {
+		headers: { "Content-Type": "application/x-www-form-urlencoded" },
+	})
+	const token = response.data as Token
+	token.expires_at = Date.now() + token.expires_in * 1000
+	return token
+}
+
+/**
+ * Fetches deployments from SAP AI Core
+ * @param accessToken Access token for authentication
+ * @param baseUrl SAP AI Core base URL
+ * @param resourceGroup SAP AI Core resource group
+ * @returns Promise<Deployment[]> Array of running deployments
+ */
+async function fetchAiCoreDeployments(accessToken: string, baseUrl: string, resourceGroup: string): Promise<Deployment[]> {
+	if (!accessToken) {
+		return [{ id: "notconfigured", name: "ai-core-not-configured" }]
+	}
+
+	const headers = {
+		Authorization: `Bearer ${accessToken}`,
+		"AI-Resource-Group": resourceGroup || "default",
+		"Content-Type": "application/json",
+		"AI-Client-Type": "Cline",
+	}
+
+	const url = `${baseUrl}/v2/lm/deployments?$top=10000&$skip=0`
+
+	try {
+		const response = await axios.get(url, { headers })
+		const deployments = response.data.resources
+
+		return deployments
+			.filter((deployment: any) => deployment.targetStatus === "RUNNING")
+			.map((deployment: any) => {
+				const model = deployment.details?.resources?.backend_details?.model
+				if (!model?.name || !model?.version) {
+					return null // Skip this row
+				}
+				return {
+					id: deployment.id,
+					name: `${model.name}:${model.version}`,
+				}
+			})
+			.filter((deployment: any) => deployment !== null)
+	} catch (error) {
+		console.error("Error fetching deployments:", error)
+		throw new Error("Failed to fetch deployments")
+	}
+}
 
 /**
  * Fetches available models from SAP AI Core deployments
@@ -19,29 +100,20 @@ export async function getSapAiCoreModels(
 			return SapAiCoreModelDeploymentArray.create({ deployments: [] })
 		}
 
-		// Create SAP AI Core handler with provided configuration
-		const sapAiCoreHandler = new SapAiCoreHandler({
-			sapAiCoreClientId: request.clientId,
-			sapAiCoreClientSecret: request.clientSecret,
-			sapAiCoreTokenUrl: request.tokenUrl,
-			sapAiResourceGroup: request.resourceGroup,
-			sapAiCoreBaseUrl: request.baseUrl,
-		})
-
-		// Use the existing getAiCoreDeployments method through reflection
-		// Since it's private, we need to access it through the handler instance
-		const deployments = await (sapAiCoreHandler as any).getAiCoreDeployments()
+		// Direct authentication and deployment fetching
+		const token = await authenticate(request.clientId, request.clientSecret, request.tokenUrl)
+		const deployments = await fetchAiCoreDeployments(token.access_token, request.baseUrl, request.resourceGroup)
 
 		// Create model-deployment pairs
 		const modelDeployments = deployments
-			.map((deployment: any) => {
+			.map((deployment) => {
 				const modelName = deployment.name.split(":")[0].toLowerCase()
 				return SapAiCoreModelDeployment.create({
 					modelName: modelName,
 					deploymentId: deployment.id,
 				})
 			})
-			.sort((a: any, b: any) => a.modelName.localeCompare(b.modelName))
+			.sort((a, b) => a.modelName.localeCompare(b.modelName))
 
 		return SapAiCoreModelDeploymentArray.create({ deployments: modelDeployments })
 	} catch (error) {
