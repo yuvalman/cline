@@ -1,6 +1,5 @@
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import Fuse from "fuse.js"
 import React, { KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
 import { SapAiCoreModelDeployment } from "@shared/proto/models"
@@ -52,25 +51,9 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 		}
 	}, [])
 
-	const fuse = useMemo(() => {
-		return new Fuse(sapAiCoreModelDeployments, {
-			keys: ["modelName"], // Search by model name
-			threshold: 0.8,
-			shouldSort: true,
-			isCaseSensitive: false,
-			ignoreLocation: true,
-			minMatchCharLength: 1,
-		})
-	}, [sapAiCoreModelDeployments])
-
 	const modelSearchResults = useMemo(() => {
-		if (!searchTerm) {
-			return sapAiCoreModelDeployments
-		}
-
-		const searchResults = fuse.search(searchTerm)
-		return searchResults.map((result) => result.item)
-	}, [sapAiCoreModelDeployments, searchTerm, fuse])
+		return sapAiCoreModelDeployments
+	}, [sapAiCoreModelDeployments])
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (!isDropdownVisible) return
