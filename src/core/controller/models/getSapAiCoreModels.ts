@@ -31,7 +31,7 @@ export async function getSapAiCoreModels(controller: Controller, request: SapAiC
 		const deployments = await (sapAiCoreHandler as any).getAiCoreDeployments()
 
 		// Extract model names from deployments
-		const modelNames = deployments.map((deployment: any) => deployment.name).sort()
+		const modelNames = deployments.map((deployment: any) => deployment.name.split(":")[0].toLowerCase()).sort()
 
 		return StringArray.create({ values: modelNames })
 	} catch (error) {
