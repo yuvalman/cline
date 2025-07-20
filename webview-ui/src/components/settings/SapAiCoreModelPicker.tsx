@@ -32,6 +32,13 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 		setSearchTerm(modelDeployment.modelName)
 	}
 
+	// Initialize searchTerm with selectedModelId when component mounts or selectedModelId changes
+	useEffect(() => {
+		if (selectedModelId && !searchTerm) {
+			setSearchTerm(selectedModelId)
+		}
+	}, [selectedModelId])
+
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
 			if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
