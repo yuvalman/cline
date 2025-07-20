@@ -3,7 +3,6 @@ import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
 import React, { KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
-import { highlight } from "../history/HistoryView"
 
 export const SAP_AI_CORE_MODEL_PICKER_Z_INDEX = 1_000
 
@@ -45,39 +44,25 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 		}
 	}, [])
 
-	const searchableItems = useMemo(() => {
-		return sapAiCoreModels.map((id) => ({
-			id,
-			html: id,
-		}))
-	}, [sapAiCoreModels])
-
 	const fuse = useMemo(() => {
-		return new Fuse(searchableItems, {
-			keys: ["html"],
+		return new Fuse(sapAiCoreModels, {
 			threshold: 0.8,
 			shouldSort: true,
 			isCaseSensitive: false,
 			ignoreLocation: true,
-			includeMatches: true,
 			minMatchCharLength: 1,
 		})
-	}, [searchableItems])
+	}, [sapAiCoreModels])
 
 	const modelSearchResults = useMemo(() => {
 		if (!searchTerm) {
-			return searchableItems
+			return sapAiCoreModels
 		}
 
-		// Get search results for highlighting
-		const searchResults = highlight(fuse.search(searchTerm), "sap-ai-core-model-item-highlight")
-
-		// Create a map of search results for quick lookup
-		const searchResultsMap = new Map(searchResults.map((item) => [item.id, item]))
-
-		// Return all items, but use highlighted versions where available
-		return searchableItems.map((item) => searchResultsMap.get(item.id) || item)
-	}, [searchableItems, searchTerm, fuse])
+		// Get search results without highlighting
+		const searchResults = fuse.search(searchTerm)
+		return searchResults.map((result) => result.item)
+	}, [sapAiCoreModels, searchTerm, fuse])
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (!isDropdownVisible) return
@@ -94,7 +79,7 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 			case "Enter":
 				event.preventDefault()
 				if (selectedIndex >= 0 && selectedIndex < modelSearchResults.length) {
-					handleModelChange(modelSearchResults[selectedIndex].id)
+					handleModelChange(modelSearchResults[selectedIndex])
 					setIsDropdownVisible(false)
 				}
 				break
@@ -123,14 +108,6 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 
 	return (
 		<div style={{ width: "100%" }}>
-			<style>
-				{`
-				.sap-ai-core-model-item-highlight {
-					background-color: var(--vscode-editor-findMatchHighlightBackground);
-					color: inherit;
-				}
-				`}
-			</style>
 			<DropdownWrapper ref={dropdownRef}>
 				<VSCodeTextField
 					id="sap-ai-core-model-search"
@@ -170,15 +147,15 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 					<DropdownList ref={dropdownListRef}>
 						{modelSearchResults.map((item, index) => (
 							<DropdownItem
-								key={item.id}
+								key={item}
 								ref={(el) => (itemRefs.current[index] = el)}
 								isSelected={index === selectedIndex}
 								onMouseEnter={() => setSelectedIndex(index)}
 								onClick={() => {
-									handleModelChange(item.id)
+									handleModelChange(item)
 									setIsDropdownVisible(false)
 								}}>
-								<span dangerouslySetInnerHTML={{ __html: item.html }} />
+								<span>{item}</span>
 							</DropdownItem>
 						))}
 					</DropdownList>
