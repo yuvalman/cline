@@ -23,7 +23,7 @@ interface Deployment {
  * @param tokenUrl SAP AI Core token URL
  * @returns Promise<Token> Access token with metadata
  */
-async function authenticate(clientId: string, clientSecret: string, tokenUrl: string): Promise<Token> {
+async function getToken(clientId: string, clientSecret: string, tokenUrl: string): Promise<Token> {
 	const payload = {
 		grant_type: "client_credentials",
 		client_id: clientId,
@@ -101,7 +101,7 @@ export async function getSapAiCoreModels(
 		}
 
 		// Direct authentication and deployment fetching
-		const token = await authenticate(request.clientId, request.clientSecret, request.tokenUrl)
+		const token = await getToken(request.clientId, request.clientSecret, request.tokenUrl)
 		const deployments = await fetchAiCoreDeployments(token.access_token, request.baseUrl, request.resourceGroup)
 
 		// Create model-deployment pairs
