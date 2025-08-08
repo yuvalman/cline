@@ -1,15 +1,14 @@
+import { useState, useCallback, useEffect } from "react"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { DebouncedTextField } from "../common/DebouncedTextField"
 import { ModelInfoView } from "../common/ModelInfoView"
 import { normalizeApiConfiguration } from "../utils/providerUtils"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { Mode } from "@shared/ChatSettings"
-import SapAiCoreModelPicker from "../SapAiCoreModelPicker"
+import { Mode } from "@shared/storage/types"
 import { ModelsServiceClient } from "@/services/grpc-client"
-import { SapAiCoreModelsRequest, SapAiCoreModelDeployment } from "@shared/proto/models"
-import { useCallback, useEffect, useState } from "react"
-
+import { SapAiCoreModelsRequest, SapAiCoreModelDeployment } from "@shared/proto/index.cline"
+import SapAiCoreModelPicker from "../SapAiCoreModelPicker"
 /**
  * Props for the SapAiCoreProvider component
  */
@@ -29,18 +28,22 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
 
 	// State for dynamic model fetching
-	const [sapAiCoreModelDeployments, setSapAiCoreModelDeployments] = useState<SapAiCoreModelDeployment[]>([])
+	const [sapAiCoreDeployedDeployments, setSapAiCoreDeployedDeployments] = useState<SapAiCoreModelDeployment[]>([])
 	const [isLoadingModels, setIsLoadingModels] = useState(false)
 	const [modelError, setModelError] = useState<string | null>(null)
 
+	// Check if all required credentials are available
+	const hasRequiredCredentials =
+		apiConfiguration?.sapAiCoreClientId &&
+		apiConfiguration?.sapAiCoreClientSecret &&
+		apiConfiguration?.sapAiCoreBaseUrl &&
+		apiConfiguration?.sapAiCoreTokenUrl &&
+		apiConfiguration?.sapAiResourceGroup
+
 	// Function to fetch SAP AI Core models
 	const fetchSapAiCoreModels = useCallback(async () => {
-		if (
-			!apiConfiguration?.sapAiCoreClientId ||
-			!apiConfiguration?.sapAiCoreClientSecret ||
-			!apiConfiguration?.sapAiCoreBaseUrl
-		) {
-			setSapAiCoreModelDeployments([])
+		if (!hasRequiredCredentials) {
+			setSapAiCoreDeployedDeployments([])
 			return
 		}
 
@@ -59,14 +62,14 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			)
 
 			if (response && response.deployments) {
-				setSapAiCoreModelDeployments(response.deployments)
+				setSapAiCoreDeployedDeployments(response.deployments)
 			} else {
-				setSapAiCoreModelDeployments([])
+				setSapAiCoreDeployedDeployments([])
 			}
 		} catch (error) {
 			console.error("Error fetching SAP AI Core models:", error)
 			setModelError("Failed to fetch models. Please check your configuration.")
-			setSapAiCoreModelDeployments([])
+			setSapAiCoreDeployedDeployments([])
 		} finally {
 			setIsLoadingModels(false)
 		}
@@ -80,17 +83,12 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 
 	// Fetch models when configuration changes
 	useEffect(() => {
-		if (
-			showModelOptions &&
-			apiConfiguration?.sapAiCoreClientId &&
-			apiConfiguration?.sapAiCoreClientSecret &&
-			apiConfiguration?.sapAiCoreBaseUrl
-		) {
+		if (showModelOptions && hasRequiredCredentials) {
 			fetchSapAiCoreModels()
 		}
-	}, [showModelOptions, fetchSapAiCoreModels])
+	}, [showModelOptions, hasRequiredCredentials, fetchSapAiCoreModels])
 
-	// Handle model selection - now includes both model ID and deployment ID
+	// Handle model selection
 	const handleModelChange = useCallback(
 		(modelId: string, deploymentId: string) => {
 			// Update both model ID and deployment ID atomically
@@ -103,7 +101,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 				currentMode,
 			)
 		},
-		[handleModeFieldsChange, currentMode],
+		[handleModeFieldChange, currentMode],
 	)
 
 	return (
@@ -123,7 +121,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			)}
 
 			<DebouncedTextField
-				initialValue={apiConfiguration?.sapAiCoreClientSecret ? "********" : ""}
+				initialValue={apiConfiguration?.sapAiCoreClientSecret || ""}
 				onChange={(value) => handleFieldChange("sapAiCoreClientSecret", value)}
 				style={{ width: "100%" }}
 				type="password"
@@ -177,7 +175,6 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			{showModelOptions && (
 				<>
 					<div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-						<span style={{ fontWeight: 500 }}>Model</span>
 						{isLoadingModels ? (
 							<div style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}>
 								Loading models...
@@ -200,20 +197,25 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 									Retry
 								</button>
 							</div>
-						) : sapAiCoreModelDeployments.length > 0 ? (
-							<SapAiCoreModelPicker
-								sapAiCoreModelDeployments={sapAiCoreModelDeployments}
-								selectedModelId={selectedModelId || ""}
-								onModelChange={handleModelChange}
-								placeholder="Search and select a deployment..."
-							/>
+						) : hasRequiredCredentials ? (
+							<>
+								{sapAiCoreDeployedDeployments.length === 0 && (
+									<div
+										style={{ fontSize: "12px", color: "var(--vscode-errorForeground)", marginBottom: "8px" }}>
+										Unable to fetch models from SAP AI Core service instance. Please check your SAP AI Core
+										configuration or ensure your deployments are deployed and running in the service instance
+									</div>
+								)}
+								<SapAiCoreModelPicker
+									sapAiCoreModelDeployments={sapAiCoreDeployedDeployments}
+									selectedModelId={selectedModelId || ""}
+									onModelChange={handleModelChange}
+									placeholder="Select a model..."
+								/>
+							</>
 						) : (
-							<div style={{ fontSize: "12px", color: "var(--vscode-descriptionForeground)" }}>
-								{apiConfiguration?.sapAiCoreClientId &&
-								apiConfiguration?.sapAiCoreClientSecret &&
-								apiConfiguration?.sapAiCoreBaseUrl
-									? "No running deployments found. Please check your SAP AI Core configuration."
-									: "Please configure your SAP AI Core credentials to see available models."}
+							<div style={{ fontSize: "12px", color: "var(--vscode-errorForeground)" }}>
+								Please configure your SAP AI Core credentials to see available models.
 							</div>
 						)}
 					</div>

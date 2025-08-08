@@ -1,8 +1,8 @@
-import { useExtensionState } from "@/context/ExtensionStateContext"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import React, { KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from "react"
+import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
+import React, { memo, useMemo } from "react"
 import styled from "styled-components"
-import { SapAiCoreModelDeployment } from "@shared/proto/models"
+import { sapAiCoreModels } from "@shared/api"
+import { SapAiCoreModelDeployment } from "@shared/proto/index.cline"
 
 export const SAP_AI_CORE_MODEL_PICKER_Z_INDEX = 1_000
 
@@ -13,181 +13,136 @@ export interface SapAiCoreModelPickerProps {
 	placeholder?: string
 }
 
+interface CategorizedModel {
+	id: string
+	isDeployed: boolean
+	section: "deployed" | "supported"
+}
+
 const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	sapAiCoreModelDeployments,
 	selectedModelId,
 	onModelChange,
-	placeholder = "Search and select a model...",
+	placeholder = "Select a model...",
 }) => {
-	const [searchTerm, setSearchTerm] = useState("")
-	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
-	const [selectedIndex, setSelectedIndex] = useState(-1)
-	const dropdownRef = useRef<HTMLDivElement>(null)
-	const itemRefs = useRef<(HTMLDivElement | null)[]>([])
-	const dropdownListRef = useRef<HTMLDivElement>(null)
+	const handleModelChange = (e: any) => {
+		const selectedValue = e.target.value
 
-	const handleModelChange = (modelDeployment: SapAiCoreModelDeployment) => {
-		onModelChange(modelDeployment.modelName, modelDeployment.deploymentId)
-		setSearchTerm(modelDeployment.modelName)
+		if (!selectedValue) return
+
+		// Find the deployment that matches the selected model
+		const deployment = sapAiCoreModelDeployments.find((d) => d.modelName === selectedValue)
+		if (deployment) {
+			onModelChange(deployment.modelName, deployment.deploymentId)
+		}
 	}
 
-	// Initialize searchTerm with selectedModelId when component mounts or selectedModelId changes
-	useEffect(() => {
-		if (selectedModelId && !searchTerm) {
-			setSearchTerm(selectedModelId)
-		}
-	}, [selectedModelId])
+	const categorizedModels = useMemo(() => {
+		const allSupportedModels = Object.keys(sapAiCoreModels)
 
-	useEffect(() => {
-		const handleClickOutside = (event: MouseEvent) => {
-			if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-				setIsDropdownVisible(false)
-			}
-		}
+		// Models that are both deployed AND supported in Cline
+		const deployedAndSupported = sapAiCoreModelDeployments.filter((deployment) =>
+			allSupportedModels.includes(deployment.modelName),
+		)
 
-		document.addEventListener("mousedown", handleClickOutside)
-		return () => {
-			document.removeEventListener("mousedown", handleClickOutside)
-		}
-	}, [])
+		// Models that are supported in Cline but NOT deployed
+		const deployedModelNames = sapAiCoreModelDeployments.map((d) => d.modelName)
+		const supportedButNotDeployed = allSupportedModels.filter(
+			(supportedModel: string) => !deployedModelNames.includes(supportedModel),
+		)
 
-	const modelSearchResults = useMemo(() => {
-		return sapAiCoreModelDeployments
+		const deployed: CategorizedModel[] = deployedAndSupported.map((deployment) => ({
+			id: deployment.modelName,
+			isDeployed: true,
+			section: "deployed" as const,
+		}))
+
+		const supported: CategorizedModel[] = supportedButNotDeployed.map((id: string) => ({
+			id,
+			isDeployed: false,
+			section: "supported" as const,
+		}))
+
+		return { deployed, supported }
 	}, [sapAiCoreModelDeployments])
 
-	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-		if (!isDropdownVisible) return
+	const renderOptions = () => {
+		const options: React.ReactNode[] = []
 
-		switch (event.key) {
-			case "ArrowDown":
-				event.preventDefault()
-				setSelectedIndex((prev) => (prev < modelSearchResults.length - 1 ? prev + 1 : prev))
-				break
-			case "ArrowUp":
-				event.preventDefault()
-				setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev))
-				break
-			case "Enter":
-				event.preventDefault()
-				if (selectedIndex >= 0 && selectedIndex < modelSearchResults.length) {
-					handleModelChange(modelSearchResults[selectedIndex])
-					setIsDropdownVisible(false)
-				}
-				break
-			case "Escape":
-				setIsDropdownVisible(false)
-				setSelectedIndex(-1)
-				break
-		}
-	}
+		// Add placeholder option
+		options.push(
+			<VSCodeOption key="placeholder" value="">
+				{placeholder}
+			</VSCodeOption>,
+		)
 
-	useEffect(() => {
-		setSelectedIndex(-1)
-		if (dropdownListRef.current) {
-			dropdownListRef.current.scrollTop = 0
-		}
-	}, [searchTerm])
+		// Add deployed models section
+		if (categorizedModels.deployed.length > 0) {
+			// Add section separator (disabled option)
+			options.push(
+				<VSCodeOption key="deployed-header" value="" disabled>
+					── Deployed Models ──
+				</VSCodeOption>,
+			)
 
-	useEffect(() => {
-		if (selectedIndex >= 0 && itemRefs.current[selectedIndex]) {
-			itemRefs.current[selectedIndex]?.scrollIntoView({
-				block: "nearest",
-				behavior: "smooth",
+			categorizedModels.deployed.forEach((model) => {
+				options.push(
+					<VSCodeOption key={model.id} value={model.id}>
+						{model.id}
+					</VSCodeOption>,
+				)
 			})
 		}
-	}, [selectedIndex])
+
+		// Add supported but not deployed models section
+		if (categorizedModels.supported.length > 0) {
+			// Add section separator (disabled option)
+			options.push(
+				<VSCodeOption key="supported-header" value="" disabled>
+					── Not Deployed Models ──
+				</VSCodeOption>,
+			)
+
+			categorizedModels.supported.forEach((model) => {
+				options.push(
+					<VSCodeOption key={model.id} value={model.id} style={{ opacity: 0.6 }}>
+						{model.id}
+					</VSCodeOption>,
+				)
+			})
+		}
+
+		return options
+	}
 
 	return (
-		<div style={{ width: "100%" }}>
-			<DropdownWrapper ref={dropdownRef}>
-				<VSCodeTextField
-					id="sap-ai-core-model-search"
-					placeholder={placeholder}
-					value={searchTerm}
-					onInput={(e) => {
-						const value = (e.target as HTMLInputElement)?.value || ""
-						setSearchTerm(value)
-						setIsDropdownVisible(true)
-					}}
-					onFocus={() => setIsDropdownVisible(true)}
-					onKeyDown={handleKeyDown}
-					style={{
-						width: "100%",
-						zIndex: SAP_AI_CORE_MODEL_PICKER_Z_INDEX,
-						position: "relative",
-					}}>
-					{searchTerm && (
-						<div
-							className="input-icon-button codicon codicon-close"
-							aria-label="Clear search"
-							onClick={() => {
-								setSearchTerm("")
-								setIsDropdownVisible(true)
-							}}
-							slot="end"
-							style={{
-								display: "flex",
-								justifyContent: "center",
-								alignItems: "center",
-								height: "100%",
-							}}
-						/>
-					)}
-				</VSCodeTextField>
-				{isDropdownVisible && modelSearchResults.length > 0 && (
-					<DropdownList ref={dropdownListRef}>
-						{modelSearchResults.map((item, index) => (
-							<DropdownItem
-								key={`${item.modelName}-${item.deploymentId}`}
-								ref={(el) => (itemRefs.current[index] = el)}
-								isSelected={index === selectedIndex}
-								onMouseEnter={() => setSelectedIndex(index)}
-								onClick={() => {
-									handleModelChange(item)
-									setIsDropdownVisible(false)
-								}}>
-								<span>{item.modelName}</span>
-							</DropdownItem>
-						))}
-					</DropdownList>
-				)}
-			</DropdownWrapper>
-		</div>
+		<DropdownContainer>
+			<label htmlFor="sap-ai-core-model-dropdown">
+				<span style={{ fontWeight: 500 }}>Model</span>
+			</label>
+			<VSCodeDropdown
+				id="sap-ai-core-model-dropdown"
+				value={selectedModelId}
+				onChange={handleModelChange}
+				style={{ width: "100%" }}>
+				{renderOptions()}
+			</VSCodeDropdown>
+		</DropdownContainer>
 	)
 }
 
 export default memo(SapAiCoreModelPicker)
 
 // Dropdown styling
-
-const DropdownWrapper = styled.div`
+const DropdownContainer = styled.div`
 	position: relative;
 	width: 100%;
-`
+	z-index: ${SAP_AI_CORE_MODEL_PICKER_Z_INDEX};
 
-const DropdownList = styled.div`
-	position: absolute;
-	top: calc(100% - 3px);
-	left: 0;
-	width: calc(100% - 2px);
-	max-height: 200px;
-	overflow-y: auto;
-	background-color: var(--vscode-dropdown-background);
-	border: 1px solid var(--vscode-list-activeSelectionBackground);
-	z-index: ${SAP_AI_CORE_MODEL_PICKER_Z_INDEX - 1};
-	border-bottom-left-radius: 3px;
-	border-bottom-right-radius: 3px;
-`
-
-const DropdownItem = styled.div<{ isSelected: boolean }>`
-	padding: 5px 10px;
-	cursor: pointer;
-	word-break: break-all;
-	white-space: normal;
-
-	background-color: ${({ isSelected }) => (isSelected ? "var(--vscode-list-activeSelectionBackground)" : "inherit")};
-
-	&:hover {
-		background-color: var(--vscode-list-activeSelectionBackground);
+	// Force dropdowns to open downward
+	& vscode-dropdown::part(listbox) {
+		position: absolute !important;
+		top: 100% !important;
+		bottom: auto !important;
 	}
 `

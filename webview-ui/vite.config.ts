@@ -26,6 +26,8 @@ const writePortToFile = (): Plugin => {
 	}
 }
 
+const isDevBuild = process.argv.includes("--dev-build")
+
 export default defineConfig({
 	plugins: [react(), tailwindcss(), writePortToFile()],
 	test: {
@@ -40,12 +42,26 @@ export default defineConfig({
 	build: {
 		outDir: "build",
 		reportCompressedSize: false,
+		// Only minify in production build
+		minify: !isDevBuild,
+		// Enable inline source maps for dev build
+		sourcemap: isDevBuild ? "inline" : false,
 		rollupOptions: {
 			output: {
 				inlineDynamicImports: true,
 				entryFileNames: `assets/[name].js`,
 				chunkFileNames: `assets/[name].js`,
 				assetFileNames: `assets/[name].[ext]`,
+				// Disable compact output for dev build
+				compact: !isDevBuild,
+				// Add generous formatting for dev build
+				...(isDevBuild && {
+					generatedCode: {
+						constBindings: false,
+						objectShorthand: false,
+						arrowFunctions: false,
+					},
+				}),
 			},
 		},
 		chunkSizeWarningLimit: 100000,
@@ -67,7 +83,6 @@ export default defineConfig({
 			NODE_ENV: JSON.stringify(process.env.IS_DEV ? "development" : "production"),
 			IS_DEV: JSON.stringify(process.env.IS_DEV),
 			IS_TEST: JSON.stringify(process.env.IS_TEST),
-			CLINE_ENVIRONMENT: JSON.stringify(process.env.CLINE_ENVIRONMENT ?? "production"),
 		},
 	},
 	resolve: {

@@ -5,6 +5,7 @@ import { ApiHandler } from "../"
 import { ModelInfo, sapAiCoreDefaultModelId, SapAiCoreModelId, sapAiCoreModels } from "../../shared/api"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
+import { SapAiCoreModelsRequest, SapAiCoreModelDeployment } from "../../shared/proto/index.cline"
 
 interface SapAiCoreHandlerOptions {
 	sapAiCoreClientId?: string

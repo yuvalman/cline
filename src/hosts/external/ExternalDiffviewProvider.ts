@@ -1,5 +1,7 @@
-import { getHostBridgeProvider } from "@/hosts/host-providers"
+import { HostProvider } from "@/hosts/host-provider"
 import { DiffViewProvider } from "@/integrations/editor/DiffViewProvider"
+import { DiagnosticSeverity } from "@/shared/proto/host/workspace"
+import { status } from "@grpc/grpc-js"
 
 export class ExternalDiffViewProvider extends DiffViewProvider {
 	private activeDiffEditorId: string | undefined
@@ -8,7 +10,7 @@ export class ExternalDiffViewProvider extends DiffViewProvider {
 		if (!this.absolutePath) {
 			return
 		}
-		const response = await getHostBridgeProvider().diffClient.openDiff({
+		const response = await HostProvider.diff.openDiff({
 			path: this.absolutePath,
 			content: this.originalContent ?? "",
 		})
@@ -23,7 +25,7 @@ export class ExternalDiffViewProvider extends DiffViewProvider {
 		if (!this.activeDiffEditorId) {
 			return
 		}
-		await getHostBridgeProvider().diffClient.replaceText({
+		await HostProvider.diff.replaceText({
 			diffId: this.activeDiffEditorId,
 			content: content,
 			startLine: rangeToReplace.startLine,
@@ -35,44 +37,76 @@ export class ExternalDiffViewProvider extends DiffViewProvider {
 		if (!this.activeDiffEditorId) {
 			return
 		}
-		await getHostBridgeProvider().diffClient.truncateDocument({
+		await HostProvider.diff.truncateDocument({
 			diffId: this.activeDiffEditorId,
 			endLine: lineNumber,
 		})
 	}
 
-	protected async saveDocument(): Promise<void> {
+	protected async saveDocument(): Promise<Boolean> {
 		if (!this.activeDiffEditorId) {
-			return
+			return false
 		}
-		await getHostBridgeProvider().diffClient.saveDocument({ diffId: this.activeDiffEditorId })
+		try {
+			await HostProvider.diff.saveDocument({ diffId: this.activeDiffEditorId })
+			return true
+		} catch (err: any) {
+			if (err.code === status.NOT_FOUND) {
+				// This can happen when the task is reloaded or the diff editor is closed. So, don't
+				// consider it a real error.
+				console.log("Diff not found:", this.activeDiffEditorId)
+				return false
+			} else {
+				throw err
+			}
+		}
 	}
 
 	protected override async scrollEditorToLine(line: number): Promise<void> {
-		console.log(`Called ExternalDiffViewProvider.scrollEditorToLine(${line}) stub`)
+		if (!this.activeDiffEditorId) {
+			return
+		}
+		await HostProvider.diff.scrollDiff({ diffId: this.activeDiffEditorId, line: line })
 	}
 
-	override async scrollAnimation(startLine: number, endLine: number): Promise<void> {
-		console.log(`Called ExternalDiffViewProvider.scrollAnimation(${startLine}, ${endLine}) stub`)
-	}
+	override async scrollAnimation(_startLine: number, _endLine: number): Promise<void> {}
 
 	protected override async getDocumentText(): Promise<string | undefined> {
 		if (!this.activeDiffEditorId) {
 			return undefined
 		}
-		return (await getHostBridgeProvider().diffClient.getDocumentText({ diffId: this.activeDiffEditorId })).content
+		return (await HostProvider.diff.getDocumentText({ diffId: this.activeDiffEditorId })).content
 	}
 
 	protected override async getNewDiagnosticProblems(): Promise<string> {
-		console.log(`Called ExternalDiffViewProvider.getNewDiagnosticProblems() stub`)
-		return ""
+		// Get diagnostics using the HostBridge workspace service
+		const response = await HostProvider.workspace.getDiagnostics({})
+
+		if (response.fileDiagnostics.length === 0) {
+			return ""
+		}
+
+		let result = ""
+		for (const fileDiagnostics of response.fileDiagnostics) {
+			const errors = fileDiagnostics.diagnostics.filter((d) => d.severity === DiagnosticSeverity.DIAGNOSTIC_ERROR)
+
+			if (errors.length > 0) {
+				result += `\n\n${fileDiagnostics.filePath}`
+				for (const diagnostic of errors) {
+					const line = (diagnostic.range?.start?.line || 0) + 1 // Proto lines are 0-indexed
+					const source = diagnostic.source ? `${diagnostic.source} ` : ""
+					result += `\n- [${source}Error] Line ${line}: ${diagnostic.message}`
+				}
+			}
+		}
+		return result.trim()
 	}
 
 	protected override async closeDiffView(): Promise<void> {
 		if (!this.activeDiffEditorId) {
 			return
 		}
-		await getHostBridgeProvider().diffClient.closeDiff({ diffId: this.activeDiffEditorId })
+		await HostProvider.diff.closeDiff({ diffId: this.activeDiffEditorId })
 		this.activeDiffEditorId = undefined
 	}
 

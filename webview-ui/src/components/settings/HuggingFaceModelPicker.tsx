@@ -1,10 +1,10 @@
-import { EmptyRequest } from "@shared/proto/common"
+import { EmptyRequest } from "@shared/proto/cline/common"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
 import React, { KeyboardEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useMount } from "react-use"
 import { huggingFaceDefaultModelId, huggingFaceModels } from "@shared/api"
-import { Mode } from "@shared/ChatSettings"
+import { Mode } from "@shared/storage/types"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { ModelsServiceClient } from "../../services/grpc-client"
 import { highlight } from "../history/HistoryView"
@@ -62,6 +62,12 @@ const HuggingFaceModelPicker: React.FC<HuggingFaceModelPickerProps> = ({ isPopup
 				console.error("Failed to refresh Hugging Face models:", err)
 			})
 	})
+
+	// Sync external changes when the modelId changes
+	useEffect(() => {
+		const currentModelId = modeFields.huggingFaceModelId || huggingFaceDefaultModelId
+		setSearchTerm(currentModelId)
+	}, [modeFields.huggingFaceModelId])
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
@@ -173,8 +179,25 @@ const HuggingFaceModelPicker: React.FC<HuggingFaceModelPickerProps> = ({ isPopup
 						}}
 						onFocus={() => setIsDropdownVisible(true)}
 						onKeyDown={handleKeyDown}
-						className="w-full relative z-[1000]"
-					/>
+						className="w-full relative z-[1000]">
+						{searchTerm && (
+							<div
+								className="input-icon-button codicon codicon-close"
+								aria-label="Clear search"
+								onClick={() => {
+									setSearchTerm("")
+									setIsDropdownVisible(true)
+								}}
+								slot="end"
+								style={{
+									display: "flex",
+									justifyContent: "center",
+									alignItems: "center",
+									height: "100%",
+								}}
+							/>
+						)}
+					</VSCodeTextField>
 					{isDropdownVisible && (
 						<div
 							ref={dropdownListRef}

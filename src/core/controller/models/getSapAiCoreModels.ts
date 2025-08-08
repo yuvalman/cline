@@ -1,6 +1,10 @@
 import axios from "axios"
 import { Controller } from ".."
-import { SapAiCoreModelsRequest, SapAiCoreModelDeploymentArray, SapAiCoreModelDeployment } from "../../../shared/proto/models"
+import {
+	SapAiCoreModelsRequest,
+	SapAiCoreModelDeploymentArray,
+	SapAiCoreModelDeployment,
+} from "../../../shared/proto/index.cline"
 
 interface Token {
 	access_token: string
@@ -24,11 +28,11 @@ interface Deployment {
  * @returns Promise<Token> Access token with metadata
  */
 async function getToken(clientId: string, clientSecret: string, tokenUrl: string): Promise<Token> {
-	const payload = {
+	const payload = new URLSearchParams({
 		grant_type: "client_credentials",
 		client_id: clientId,
 		client_secret: clientSecret,
-	}
+	})
 
 	const url = tokenUrl.replace(/\/+$/, "") + "/oauth/token"
 	const response = await axios.post(url, payload, {

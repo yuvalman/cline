@@ -29,23 +29,30 @@ const disallowedApis = {
 	"vscode.workspace.applyEdit": {
 		messageId: "useHostBridge",
 	},
-	// "vscode.env.openExternal": {
-	// 	messageId: "useUtils",
-	// },
-	// "vscode.window.showWarningMessage": {
-	// 	messageId: "useHostBridgeShowMessage",
-	// },
+	"vscode.window.onDidChangeActiveTextEditor": {
+		messageId: "useHostBridge",
+	},
+	"vscode.env.openExternal": {
+		messageId: "useUtils",
+	},
+	"vscode.window.showWarningMessage": {
+		messageId: "useHostBridgeShowMessage",
+	},
 	"vscode.window.showOpenDialog": {
 		messageId: "useHostBridgeShowMessage",
 	},
-	// There are too many warnings for these calls, uncomment the following
-	// when the migration is finished.
-	// "vscode.window.showErrorMessage": {
-	// 	messageId: "useHostBridgeShowMessage",
-	// },
-	// "vscode.window.showInformationMessage": {
-	// 	messageId: "useHostBridgeShowMessage",
-	// },
+	"vscode.window.showErrorMessage": {
+		messageId: "useHostBridgeShowMessage",
+	},
+	"vscode.window.showInformationMessage": {
+		messageId: "useHostBridgeShowMessage",
+	},
+	"vscode.window.showInputBox": {
+		messageId: "useHostBridge",
+	},
+	"vscode.workspace.findFiles": {
+		messageId: "useNative",
+	},
 }
 
 module.exports = createRule({
@@ -71,11 +78,11 @@ module.exports = createRule({
 				"This provides consistent path handling across different environments.\n" +
 				"Found: {{code}}",
 			useHostBridgeWorkspace:
-				"Use getHostBridgeProvider().workspaceClient.getWorkspacePaths({}) instead of vscode.workspace.workspaceFolders.\n" +
+				"Use HostProvider.workspace.getWorkspacePaths({}) instead of vscode.workspace.workspaceFolders.\n" +
 				"This provides a consistent abstraction across VSCode and standalone environments.\n" +
 				"Found: {{code}}",
 			useHostBridgeShowMessage:
-				"Use getHostBridgeProvider().windowClient.showMessage instead of the vscode.window.showMessage.\n" +
+				"Use HostProvider.window.showMessage instead of the vscode.window.showMessage.\n" +
 				"This provides a consistent abstraction across VSCode and standalone environments.\n" +
 				"Found: {{code}}",
 			useHostBridge:
@@ -84,6 +91,10 @@ module.exports = createRule({
 				"Found: {{code}}",
 			useUtils:
 				"Use utilities in @/utils instead of calling vscode APIs directly.\n" +
+				"This provides a consistent abstraction across VSCode and standalone environments.\n" +
+				"Found: {{code}}",
+			useNative:
+				"Use a native Javascript API instead of calling the vscode API.\n" +
 				"This provides a consistent abstraction across VSCode and standalone environments.\n" +
 				"Found: {{code}}",
 		},
@@ -184,6 +195,10 @@ module.exports = createRule({
 				return true
 			}
 			if (filename.includes("/standalone/runtime-files/")) {
+				return true
+			}
+			// Skip checking test files
+			if (filename.endsWith(".test.ts")) {
 				return true
 			}
 		}

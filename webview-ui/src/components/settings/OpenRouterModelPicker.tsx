@@ -2,7 +2,7 @@ import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { StateServiceClient } from "@/services/grpc-client"
 import { ApiConfiguration, openRouterDefaultModelId } from "@shared/api"
-import { StringRequest } from "@shared/proto/common"
+import { StringRequest } from "@shared/proto/cline/common"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import Fuse from "fuse.js"
 import React, { KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from "react"
@@ -15,7 +15,7 @@ import { getModeSpecificFields, normalizeApiConfiguration } from "./utils/provid
 import FeaturedModelCard from "./FeaturedModelCard"
 import ThinkingBudgetSlider from "./ThinkingBudgetSlider"
 import { useApiConfigurationHandlers } from "./utils/useApiConfigurationHandlers"
-import { Mode } from "@shared/ChatSettings"
+import { Mode } from "@shared/storage/types"
 
 // Star icon for favorites
 const StarIcon = ({ isFavorite, onClick }: { isFavorite: boolean; onClick: (e: React.MouseEvent) => void }) => {
@@ -51,14 +51,14 @@ const featuredModels = [
 		label: "Best",
 	},
 	{
+		id: "anthropic/claude-opus-4.1",
+		description: "Anthropic's newest model topping benchmarks",
+		label: "New",
+	},
+	{
 		id: "google/gemini-2.5-pro",
 		description: "Large 1M context window, great value",
 		label: "Trending",
-	},
-	{
-		id: "moonshotai/kimi-k2",
-		description: "Open source model topping coding benchmarks",
-		label: "New",
 	},
 ]
 
@@ -67,7 +67,6 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup, 
 	const { apiConfiguration, openRouterModels, refreshOpenRouterModels } = useExtensionState()
 	const modeFields = getModeSpecificFields(apiConfiguration, currentMode)
 	const [searchTerm, setSearchTerm] = useState(modeFields.openRouterModelId || openRouterDefaultModelId)
-	const [isSearchInputDirty, setIsSearchInputDirty] = useState(false)
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
 	const dropdownRef = useRef<HTMLDivElement>(null)
@@ -98,22 +97,11 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup, 
 
 	useMount(refreshOpenRouterModels)
 
-	// Sync external changes only when user isn't actively typing
+	// Sync external changes when the modelId changes
 	useEffect(() => {
-		if (!isSearchInputDirty) {
-			const currentModelId = modeFields.openRouterModelId || openRouterDefaultModelId
-			setSearchTerm(currentModelId)
-		}
-	}, [modeFields.openRouterModelId, isSearchInputDirty])
-
-	// Reset dirty flag after user stops typing (1 second timeout)
-	useEffect(() => {
-		if (!isSearchInputDirty) return
-		const timeout = setTimeout(() => {
-			setIsSearchInputDirty(false)
-		}, 1000)
-		return () => clearTimeout(timeout)
-	}, [searchTerm, isSearchInputDirty])
+		const currentModelId = modeFields.openRouterModelId || openRouterDefaultModelId
+		setSearchTerm(currentModelId)
+	}, [modeFields.openRouterModelId])
 
 	useEffect(() => {
 		const handleClickOutside = (event: MouseEvent) => {
@@ -223,6 +211,7 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup, 
 	const showBudgetSlider = useMemo(() => {
 		return (
 			selectedModelId?.toLowerCase().includes("claude-sonnet-4") ||
+			selectedModelId?.toLowerCase().includes("claude-opus-4.1") ||
 			selectedModelId?.toLowerCase().includes("claude-opus-4") ||
 			selectedModelId?.toLowerCase().includes("claude-3-7-sonnet") ||
 			selectedModelId?.toLowerCase().includes("claude-3.7-sonnet") ||
@@ -269,8 +258,7 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup, 
 						placeholder="Search and select a model..."
 						value={searchTerm}
 						onInput={(e) => {
-							setIsSearchInputDirty(true)
-							handleModelChange((e.target as HTMLInputElement)?.value?.toLowerCase())
+							setSearchTerm((e.target as HTMLInputElement)?.value.toLowerCase() || "")
 							setIsDropdownVisible(true)
 						}}
 						onFocus={() => setIsDropdownVisible(true)}
@@ -285,7 +273,7 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup, 
 								className="input-icon-button codicon codicon-close"
 								aria-label="Clear search"
 								onClick={() => {
-									handleModelChange("")
+									setSearchTerm("")
 									setIsDropdownVisible(true)
 								}}
 								slot="end"
