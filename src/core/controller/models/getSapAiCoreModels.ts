@@ -1,10 +1,6 @@
 import axios from "axios"
 import { Controller } from ".."
-import {
-	SapAiCoreModelsRequest,
-	SapAiCoreModelDeploymentArray,
-	SapAiCoreModelDeployment,
-} from "../../../shared/proto/index.cline"
+import { SapAiCoreModelsRequest, SapAiCoreModelDeployments, SapAiCoreModelDeployment } from "../../../shared/proto/index.cline"
 
 interface Token {
 	access_token: string
@@ -96,12 +92,12 @@ async function fetchAiCoreDeployments(accessToken: string, baseUrl: string, reso
 export async function getSapAiCoreModels(
 	controller: Controller,
 	request: SapAiCoreModelsRequest,
-): Promise<SapAiCoreModelDeploymentArray> {
+): Promise<SapAiCoreModelDeployments> {
 	try {
 		// Check if required configuration is provided
 		if (!request.clientId || !request.clientSecret || !request.baseUrl) {
 			// Return empty array if configuration is incomplete
-			return SapAiCoreModelDeploymentArray.create({ deployments: [] })
+			return SapAiCoreModelDeployments.create({ deployments: [] })
 		}
 
 		// Direct authentication and deployment fetching
@@ -119,9 +115,9 @@ export async function getSapAiCoreModels(
 			})
 			.sort((a, b) => a.modelName.localeCompare(b.modelName))
 
-		return SapAiCoreModelDeploymentArray.create({ deployments: modelDeployments })
+		return SapAiCoreModelDeployments.create({ deployments: modelDeployments })
 	} catch (error) {
 		console.error("Error fetching SAP AI Core models:", error)
-		return SapAiCoreModelDeploymentArray.create({ deployments: [] })
+		return SapAiCoreModelDeployments.create({ deployments: [] })
 	}
 }

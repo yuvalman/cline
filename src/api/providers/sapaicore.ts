@@ -10,7 +10,6 @@ import {
 	type ContentBlock as BedrockContentBlock,
 	ConversationRole as BedrockConversationRole,
 } from "@aws-sdk/client-bedrock-runtime"
-import { SapAiCoreModelsRequest, SapAiCoreModelDeployment } from "../../shared/proto/index.cline"
 
 interface SapAiCoreHandlerOptions {
 	sapAiCoreClientId?: string

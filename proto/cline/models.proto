@@ -30,7 +30,7 @@ service ModelsService {
   // Refreshes and returns Baseten models
   rpc refreshBasetenModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
    // Fetches available models from SAP AI Core
-  rpc getSapAiCoreModels(SapAiCoreModelsRequest) returns (SapAiCoreModelDeploymentArray);
+  rpc getSapAiCoreModels(SapAiCoreModelsRequest) returns (SapAiCoreModelDeployments);
 }
 
 // List of VS Code LM models
@@ -102,8 +102,8 @@ message SapAiCoreModelDeployment {
   string deployment_id = 2;
 }
 
-// Array of SAP AI Core model deployments
-message SapAiCoreModelDeploymentArray {
+// List of SAP AI Core model deployments
+message SapAiCoreModelDeployments {
   repeated SapAiCoreModelDeployment deployments = 1;
 }
 
