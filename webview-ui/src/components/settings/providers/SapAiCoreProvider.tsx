@@ -22,7 +22,7 @@ interface SapAiCoreProviderProps {
  * The SAP AI Core provider configuration component
  */
 export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: SapAiCoreProviderProps) => {
-	const { apiConfiguration } = useExtensionState()
+	const { apiConfiguration, planActSeparateModelsSetting } = useExtensionState()
 	const { handleFieldChange, handleModeFieldChange, handleModeFieldsChange } = useApiConfigurationHandlers()
 
 	const { selectedModelId, selectedModelInfo } = normalizeApiConfiguration(apiConfiguration, currentMode)
@@ -88,6 +88,65 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		}
 	}, [showModelOptions, hasRequiredCredentials, fetchSapAiCoreModels])
 
+	// Auto-update deployment IDs when deployments change
+	useEffect(() => {
+		if (sapAiCoreDeployedDeployments.length === 0) {
+			return
+		}
+
+		// Auto-update deployment IDs for both plan and act modes if they have changed
+		const planModelId = apiConfiguration?.planModeApiModelId
+		const planDeploymentId = apiConfiguration?.planModeSapAiCoreDeploymentId
+		const actModelId = apiConfiguration?.actModeApiModelId
+		const actDeploymentId = apiConfiguration?.actModeSapAiCoreDeploymentId
+
+		// Check and update Plan mode
+		if (planModelId && planDeploymentId) {
+			const matchingDeployment = sapAiCoreDeployedDeployments.find((d) => d.modelName === planModelId)
+			if (matchingDeployment && matchingDeployment.deploymentId !== planDeploymentId) {
+				console.log(
+					`Auto-updating PLAN deployment ID for model ${planModelId}: ${planDeploymentId} -> ${matchingDeployment.deploymentId}`,
+				)
+				// Update plan mode specifically
+				handleModeFieldsChange(
+					{
+						modelId: { plan: "planModeApiModelId", act: "actModeApiModelId" },
+						deploymentId: { plan: "planModeSapAiCoreDeploymentId", act: "actModeSapAiCoreDeploymentId" },
+					},
+					{ modelId: planModelId, deploymentId: matchingDeployment.deploymentId },
+					"plan", // Force plan mode update
+				)
+			}
+		}
+
+		// Check and update Act mode (if different from plan or if separate models setting is enabled)
+		if (actModelId && actDeploymentId && (planActSeparateModelsSetting || actModelId !== planModelId)) {
+			const matchingDeployment = sapAiCoreDeployedDeployments.find((d) => d.modelName === actModelId)
+			if (matchingDeployment && matchingDeployment.deploymentId !== actDeploymentId) {
+				console.log(
+					`Auto-updating ACT deployment ID for model ${actModelId}: ${actDeploymentId} -> ${matchingDeployment.deploymentId}`,
+				)
+				// Update act mode specifically
+				handleModeFieldsChange(
+					{
+						modelId: { plan: "planModeApiModelId", act: "actModeApiModelId" },
+						deploymentId: { plan: "planModeSapAiCoreDeploymentId", act: "actModeSapAiCoreDeploymentId" },
+					},
+					{ modelId: actModelId, deploymentId: matchingDeployment.deploymentId },
+					"act", // Force act mode update
+				)
+			}
+		}
+	}, [
+		sapAiCoreDeployedDeployments,
+		apiConfiguration?.planModeApiModelId,
+		apiConfiguration?.planModeSapAiCoreDeploymentId,
+		apiConfiguration?.actModeApiModelId,
+		apiConfiguration?.actModeSapAiCoreDeploymentId,
+		handleModeFieldsChange,
+		planActSeparateModelsSetting,
+	])
+
 	// Handle model selection
 	const handleModelChange = useCallback(
 		(modelId: string, deploymentId: string) => {
@@ -101,7 +160,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 				currentMode,
 			)
 		},
-		[handleModeFieldChange, currentMode],
+		[handleModeFieldsChange, currentMode],
 	)
 
 	return (
