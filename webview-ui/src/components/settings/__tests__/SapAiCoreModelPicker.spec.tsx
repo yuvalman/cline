@@ -55,7 +55,6 @@ vi.mock("../../../context/ExtensionStateContext", async (importOriginal) => {
 
 describe("SapAiCoreModelPicker Component", () => {
 	vi.clearAllMocks()
-	const mockPostMessage = vi.fn()
 	const mockOnModelChange = vi.fn()
 
 	// Helper function to create SapAiCoreModelDeployment objects
@@ -67,8 +66,6 @@ describe("SapAiCoreModelPicker Component", () => {
 	}
 
 	beforeEach(() => {
-		//@ts-expect-error - vscode is not defined in the global namespace in test environment
-		global.vscode = { postMessage: mockPostMessage }
 		mockOnModelChange.mockClear()
 	})
 

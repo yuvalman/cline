@@ -1,6 +1,5 @@
 import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 import React, { memo, useMemo } from "react"
-import styled from "styled-components"
 import { sapAiCoreModels } from "@shared/api"
 import { SapAiCoreModelDeployment } from "@shared/proto/index.cline"
 
@@ -116,9 +115,9 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	}
 
 	return (
-		<DropdownContainer>
+		<div className="relative w-full z-[1000]">
 			<label htmlFor="sap-ai-core-model-dropdown">
-				<span style={{ fontWeight: 500 }}>Model</span>
+				<span className="font-medium">Model</span>
 			</label>
 			<VSCodeDropdown
 				id="sap-ai-core-model-dropdown"
@@ -127,22 +126,8 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 				style={{ width: "100%" }}>
 				{renderOptions()}
 			</VSCodeDropdown>
-		</DropdownContainer>
+		</div>
 	)
 }
 
 export default memo(SapAiCoreModelPicker)
-
-// Dropdown styling
-const DropdownContainer = styled.div`
-	position: relative;
-	width: 100%;
-	z-index: ${SAP_AI_CORE_MODEL_PICKER_Z_INDEX};
-
-	// Force dropdowns to open downward
-	& vscode-dropdown::part(listbox) {
-		position: absolute !important;
-		top: 100% !important;
-		bottom: auto !important;
-	}
-`
