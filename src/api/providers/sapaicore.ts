@@ -23,10 +23,6 @@ interface SapAiCoreHandlerOptions {
 	sapAiCoreDeploymentId?: string
 }
 
-interface Deployment {
-	id: string
-	name: string
-}
 interface Token {
 	access_token: string
 	expires_in: number
@@ -338,12 +334,13 @@ namespace Gemini {
 
 export class SapAiCoreHandler implements ApiHandler {
 	private options: SapAiCoreHandlerOptions
+	private token?: Token
 
 	constructor(options: SapAiCoreHandlerOptions) {
 		this.options = options
 	}
 
-	private async getToken(): Promise<string> {
+	private async authenticate(): Promise<Token> {
 		const payload = {
 			grant_type: "client_credentials",
 			client_id: this.options.sapAiCoreClientId || "",
@@ -354,7 +351,16 @@ export class SapAiCoreHandler implements ApiHandler {
 		const response = await axios.post(tokenUrl, payload, {
 			headers: { "Content-Type": "application/x-www-form-urlencoded" },
 		})
-		return response.data.access_token
+		const token = response.data as Token
+		token.expires_at = Date.now() + token.expires_in * 1000
+		return token
+	}
+
+	private async getToken(): Promise<string> {
+		if (!this.token || this.token.expires_at < Date.now()) {
+			this.token = await this.authenticate()
+		}
+		return this.token.access_token
 	}
 
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
