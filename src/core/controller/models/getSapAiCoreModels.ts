@@ -1,6 +1,6 @@
 import axios from "axios"
 import { Controller } from ".."
-import { SapAiCoreModelsRequest, SapAiCoreModelDeployments, SapAiCoreModelDeployment } from "../../../shared/proto/index.cline"
+import { SapAiCoreModelsRequest, SapAiCoreModelDeployments, SapAiCoreModelDeployment } from "@/shared/proto/index.cline"
 
 interface Token {
 	access_token: string
