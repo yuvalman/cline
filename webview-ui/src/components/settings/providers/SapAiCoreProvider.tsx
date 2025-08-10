@@ -88,41 +88,6 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		}
 	}, [showModelOptions, hasRequiredCredentials, fetchSapAiCoreModels])
 
-	// Auto-update deployment IDs when deployments change
-	useEffect(() => {
-		if (sapAiCoreDeployedDeployments.length === 0) {
-			return
-		}
-
-		// handleModeFieldsChange will handle plan/act logic based on planActSeparateModelsSetting
-		const currentModelId = apiConfiguration?.[currentMode === "plan" ? "planModeApiModelId" : "actModeApiModelId"]
-		const currentDeploymentId =
-			apiConfiguration?.[currentMode === "plan" ? "planModeSapAiCoreDeploymentId" : "actModeSapAiCoreDeploymentId"]
-
-		if (currentModelId && currentDeploymentId) {
-			const matchingDeployment = sapAiCoreDeployedDeployments.find((d) => d.modelName === currentModelId)
-			if (matchingDeployment && matchingDeployment.deploymentId !== currentDeploymentId) {
-				// Let handleModeFieldsChange handle the plan/act logic
-				handleModeFieldsChange(
-					{
-						modelId: { plan: "planModeApiModelId", act: "actModeApiModelId" },
-						deploymentId: { plan: "planModeSapAiCoreDeploymentId", act: "actModeSapAiCoreDeploymentId" },
-					},
-					{ modelId: currentModelId, deploymentId: matchingDeployment.deploymentId },
-					currentMode,
-				)
-			}
-		}
-	}, [
-		sapAiCoreDeployedDeployments,
-		currentMode,
-		apiConfiguration?.planModeApiModelId,
-		apiConfiguration?.planModeSapAiCoreDeploymentId,
-		apiConfiguration?.actModeApiModelId,
-		apiConfiguration?.actModeSapAiCoreDeploymentId,
-		handleModeFieldsChange,
-	])
-
 	// Handle model selection
 	const handleModelChange = useCallback(
 		(modelId: string, deploymentId: string) => {
@@ -227,6 +192,13 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 								<SapAiCoreModelPicker
 									sapAiCoreModelDeployments={sapAiCoreDeployedDeployments}
 									selectedModelId={selectedModelId || ""}
+									selectedDeploymentId={
+										apiConfiguration?.[
+											currentMode === "plan"
+												? "planModeSapAiCoreDeploymentId"
+												: "actModeSapAiCoreDeploymentId"
+										]
+									}
 									onModelChange={handleModelChange}
 									placeholder="Select a model..."
 								/>

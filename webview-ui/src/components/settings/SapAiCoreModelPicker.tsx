@@ -1,5 +1,5 @@
 import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
-import React, { memo, useMemo } from "react"
+import React, { memo, useMemo, useEffect } from "react"
 import { sapAiCoreModels } from "@shared/api"
 import { SapAiCoreModelDeployment } from "@shared/proto/index.cline"
 
@@ -8,6 +8,7 @@ export const SAP_AI_CORE_MODEL_PICKER_Z_INDEX = 1_000
 export interface SapAiCoreModelPickerProps {
 	sapAiCoreModelDeployments: SapAiCoreModelDeployment[]
 	selectedModelId: string
+	selectedDeploymentId?: string
 	onModelChange: (modelId: string, deploymentId: string) => void
 	placeholder?: string
 }
@@ -21,9 +22,23 @@ interface CategorizedModel {
 const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	sapAiCoreModelDeployments,
 	selectedModelId,
+	selectedDeploymentId,
 	onModelChange,
 	placeholder = "Select a model...",
 }) => {
+	// Auto-fix deployment ID mismatch when deployments change due to configuration changes
+	useEffect(() => {
+		if (!selectedModelId || !selectedDeploymentId || sapAiCoreModelDeployments.length === 0) {
+			return
+		}
+
+		const matchingDeployment = sapAiCoreModelDeployments.find((d) => d.modelName === selectedModelId)
+
+		if (matchingDeployment && matchingDeployment.deploymentId !== selectedDeploymentId) {
+			onModelChange(selectedModelId, matchingDeployment.deploymentId)
+		}
+	}, [sapAiCoreModelDeployments, selectedModelId, selectedDeploymentId, onModelChange])
+
 	const handleModelChange = (e: any) => {
 		const selectedValue = e.target.value
 
