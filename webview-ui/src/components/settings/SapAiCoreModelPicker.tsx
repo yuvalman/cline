@@ -29,15 +29,15 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	placeholder = "Select a model...",
 	useOrchestrationMode = false,
 }) => {
-	// Auto-fix deployment ID mismatch when deployments change due to sap ai core provider configuration changes
+	// Auto-fix deployment ID mismatch or missing deployment ID when deployments change
 	useEffect(() => {
-		if (!selectedModelId || !selectedDeploymentId || sapAiCoreModelDeployments.length === 0) {
+		if (!selectedModelId || sapAiCoreModelDeployments.length === 0) {
 			return
 		}
 
 		const matchingDeployment = sapAiCoreModelDeployments.find((d) => d.modelName === selectedModelId)
 
-		if (matchingDeployment && matchingDeployment.deploymentId !== selectedDeploymentId) {
+		if (matchingDeployment && (!selectedDeploymentId || matchingDeployment.deploymentId !== selectedDeploymentId)) {
 			onModelChange(selectedModelId, matchingDeployment.deploymentId)
 		}
 	}, [sapAiCoreModelDeployments, selectedModelId, selectedDeploymentId, onModelChange])
