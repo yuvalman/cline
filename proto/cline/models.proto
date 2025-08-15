@@ -25,12 +25,12 @@ service ModelsService {
   rpc subscribeToOpenRouterModels(EmptyRequest) returns (stream OpenRouterCompatibleModelInfo);
   // Updates API configuration
   rpc updateApiConfigurationProto(UpdateApiConfigurationRequest) returns (Empty);
-   // Refreshes and returns Groq models
+  // Refreshes and returns Groq models
   rpc refreshGroqModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
   // Refreshes and returns Baseten models
   rpc refreshBasetenModels(EmptyRequest) returns (OpenRouterCompatibleModelInfo);
-   // Fetches available models from SAP AI Core
-  rpc getSapAiCoreModels(SapAiCoreModelsRequest) returns (SapAiCoreModelDeployments);
+  // Fetches available models from SAP AI Core
+  rpc getSapAiCoreModels(SapAiCoreModelsRequest) returns (SapAiCoreModelsResponse);
 }
 
 // List of VS Code LM models
@@ -96,17 +96,6 @@ message OpenAiModelsRequest {
   string api_key = 3;
 }
 
-// SAP AI Core model with deployment information
-message SapAiCoreModelDeployment {
-  string model_name = 1;
-  string deployment_id = 2;
-}
-
-// List of SAP AI Core model deployments
-message SapAiCoreModelDeployments {
-  repeated SapAiCoreModelDeployment deployments = 1;
-}
-
 // Request for fetching SAP AI Core models
 message SapAiCoreModelsRequest {
   Metadata metadata = 1;
@@ -115,6 +104,19 @@ message SapAiCoreModelsRequest {
   string base_url = 4;
   string token_url = 5;
   string resource_group = 6;
+}
+
+// SAP AI Core model with deployment information
+message SapAiCoreModelDeployment {
+  string model_name = 1;
+  string deployment_id = 2;
+}
+
+
+// Response for SAP AI Core models with orchestration availability
+message SapAiCoreModelsResponse {
+  repeated SapAiCoreModelDeployment deployments = 1;
+  bool orchestration_available = 2;
 }
 
 // Request for updating API configuration
@@ -198,7 +200,7 @@ message ModelsApiConfiguration {
   // Global configuration fields (not mode-specific)
   optional string api_key = 1;
   optional string cline_api_key = 2;
-  optional string task_id = 3;
+  optional string ulid = 3;
   optional string lite_llm_base_url = 4;
   optional string lite_llm_api_key = 5;
   optional bool lite_llm_use_prompt_cache = 6;
@@ -249,16 +251,17 @@ message ModelsApiConfiguration {
   optional string sap_ai_resource_group = 51;
   optional string sap_ai_core_token_url = 52;
   optional string sap_ai_core_base_url = 53;
-  optional string moonshot_api_key = 54;
-  optional string moonshot_api_line = 55;
-  optional string aws_authentication = 56;
-  optional string aws_bedrock_api_key = 57;
-  optional string cline_account_id = 58;
-  optional string groq_api_key = 59;
-  optional string hugging_face_api_key = 60;
-  optional string huawei_cloud_maas_api_key = 61;
-  optional string baseten_api_key = 62;
-  optional string ollama_api_key = 63;
+  optional bool sap_ai_core_use_orchestration_mode = 54;
+  optional string moonshot_api_key = 55;
+  optional string moonshot_api_line = 56;
+  optional string aws_authentication = 57;
+  optional string aws_bedrock_api_key = 58;
+  optional string cline_account_id = 59;
+  optional string groq_api_key = 60;
+  optional string hugging_face_api_key = 61;
+  optional string huawei_cloud_maas_api_key = 62;
+  optional string baseten_api_key = 63;
+  optional string ollama_api_key = 64;
 
   // Plan mode configurations
   optional ApiProvider plan_mode_api_provider = 100;
