@@ -124,15 +124,6 @@ async function getCachedData(controller: Controller, configHash: string): Promis
 			if (cachedData.configHash === configHash && cachedData.schemaVersion === SAP_AI_CORE_CACHE_SCHEMA_VERSION) {
 				return cachedData
 			}
-
-			// Log why cache was invalidated
-			if (cachedData.configHash !== configHash) {
-				console.log("SAP AI Core cache invalidated: configuration changed")
-			} else if (cachedData.schemaVersion !== SAP_AI_CORE_CACHE_SCHEMA_VERSION) {
-				console.log(
-					`SAP AI Core cache invalidated: schema version changed from ${cachedData.schemaVersion} to ${SAP_AI_CORE_CACHE_SCHEMA_VERSION}`,
-				)
-			}
 		}
 	} catch (error) {
 		console.error("Error reading SAP AI Core cache:", error)
@@ -155,7 +146,6 @@ async function saveCachedData(controller: Controller, modelNames: string[], conf
 
 	try {
 		await fs.writeFile(cacheFilePath, JSON.stringify(cacheData, null, 2))
-		console.log(`SAP AI Core models cached with schema version ${SAP_AI_CORE_CACHE_SCHEMA_VERSION}`)
 	} catch (error) {
 		console.error("Error saving SAP AI Core cache:", error)
 	}
@@ -181,7 +171,6 @@ export async function getSapAiCoreModels(controller: Controller, request: SapAiC
 		if (!request.forceModelsRefresh) {
 			const cachedData = await getCachedData(controller, configHash)
 			if (cachedData) {
-				console.log("Using cached SAP AI Core models")
 				return StringArray.create({ values: cachedData.modelNames })
 			}
 		}
