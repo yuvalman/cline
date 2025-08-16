@@ -9,6 +9,19 @@ import { Mode } from "@shared/storage/types"
 import { ModelsServiceClient } from "@/services/grpc-client"
 import { SapAiCoreModelsRequest } from "@shared/proto/index.cline"
 import SapAiCoreModelPicker from "../SapAiCoreModelPicker"
+
+// Module-level cache that persists across component mounts within the same VSCode session
+let sessionCache: {
+	credentialsHash: string
+	models: string[]
+	orchestrationAvailable: boolean
+	hasChecked: boolean
+} | null = null
+
+// Helper function to create credentials hash for cache key
+const getCredentialsHash = (config: any) => {
+	return `${config?.sapAiCoreClientId || ""}-${config?.sapAiCoreBaseUrl || ""}-${config?.sapAiResourceGroup || ""}`
+}
 /**
  * Props for the SapAiCoreProvider component
  */
@@ -53,6 +66,8 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			setDeployedModelsArray([])
 			setOrchestrationAvailable(false)
 			setHasCheckedOrchestration(false)
+			// Clear cache for invalid credentials
+			sessionCache = null
 			return
 		}
 
@@ -70,14 +85,20 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 				}),
 			)
 
-			if (response) {
-				setDeployedModelsArray(response.modelNames || [])
-				setOrchestrationAvailable(response.orchestrationAvailable || false)
-				setHasCheckedOrchestration(true)
-			} else {
-				setDeployedModelsArray([])
-				setOrchestrationAvailable(false)
-				setHasCheckedOrchestration(true)
+			const models = response?.modelNames || []
+			const orchestration = response?.orchestrationAvailable || false
+
+			// Update component state
+			setDeployedModelsArray(models)
+			setOrchestrationAvailable(orchestration)
+			setHasCheckedOrchestration(true)
+
+			// Update module-level cache
+			sessionCache = {
+				credentialsHash: getCredentialsHash(apiConfiguration),
+				models,
+				orchestrationAvailable: orchestration,
+				hasChecked: true,
 			}
 		} catch (error) {
 			console.error("Error fetching SAP AI Core models:", error)
@@ -85,6 +106,8 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			setDeployedModelsArray([])
 			setOrchestrationAvailable(false)
 			setHasCheckedOrchestration(true)
+			// Clear cache on error
+			sessionCache = null
 		} finally {
 			setIsLoadingModels(false)
 		}
@@ -96,11 +119,23 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		apiConfiguration?.sapAiResourceGroup,
 	])
 
-	// Fetch models when configuration changes
+	// Session-based caching with module-level persistence
 	useEffect(() => {
-		if (showModelOptions && hasRequiredCredentials) {
-			fetchSapAiCoreModels()
+		if (!showModelOptions || !hasRequiredCredentials) return
+
+		const currentCredentialsHash = getCredentialsHash(apiConfiguration)
+
+		// Check if we have valid cached data for these credentials
+		if (sessionCache && sessionCache.credentialsHash === currentCredentialsHash && sessionCache.hasChecked) {
+			// Use cached data - no API call needed
+			setDeployedModelsArray(sessionCache.models)
+			setOrchestrationAvailable(sessionCache.orchestrationAvailable)
+			setHasCheckedOrchestration(true)
+			return
 		}
+
+		// No cache or credentials changed - fetch fresh data
+		fetchSapAiCoreModels()
 	}, [showModelOptions, hasRequiredCredentials, fetchSapAiCoreModels])
 
 	// Handle automatic disabling of orchestration mode when not available
@@ -118,11 +153,23 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		[handleModeFieldChange, currentMode],
 	)
 
+	// Handle blur events with change detection for credential fields
+	const handleCredentialBlur = useCallback(
+		(field: string, value: string, hasChanged: boolean) => {
+			if (hasChanged && showModelOptions) {
+				// Only fetch models if the value actually changed and we're showing model options
+				fetchSapAiCoreModels()
+			}
+		},
+		[showModelOptions, fetchSapAiCoreModels],
+	)
+
 	return (
 		<div className="flex flex-col gap-1.5">
 			<DebouncedTextField
 				initialValue={apiConfiguration?.sapAiCoreClientId || ""}
 				onChange={(value) => handleFieldChange("sapAiCoreClientId", value)}
+				onBlur={(value, hasChanged) => handleCredentialBlur("sapAiCoreClientId", value, hasChanged)}
 				style={{ width: "100%" }}
 				type="password"
 				placeholder="Enter AI Core Client Id...">
@@ -137,6 +184,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			<DebouncedTextField
 				initialValue={apiConfiguration?.sapAiCoreClientSecret || ""}
 				onChange={(value) => handleFieldChange("sapAiCoreClientSecret", value)}
+				onBlur={(value, hasChanged) => handleCredentialBlur("sapAiCoreClientSecret", value, hasChanged)}
 				style={{ width: "100%" }}
 				type="password"
 				placeholder="Enter AI Core Client Secret...">
@@ -151,6 +199,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			<DebouncedTextField
 				initialValue={apiConfiguration?.sapAiCoreBaseUrl || ""}
 				onChange={(value) => handleFieldChange("sapAiCoreBaseUrl", value)}
+				onBlur={(value, hasChanged) => handleCredentialBlur("sapAiCoreBaseUrl", value, hasChanged)}
 				style={{ width: "100%" }}
 				placeholder="Enter AI Core Base URL...">
 				<span className="font-medium">AI Core Base URL</span>
@@ -159,6 +208,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			<DebouncedTextField
 				initialValue={apiConfiguration?.sapAiCoreTokenUrl || ""}
 				onChange={(value) => handleFieldChange("sapAiCoreTokenUrl", value)}
+				onBlur={(value, hasChanged) => handleCredentialBlur("sapAiCoreTokenUrl", value, hasChanged)}
 				style={{ width: "100%" }}
 				placeholder="Enter AI Core Auth URL...">
 				<span className="font-medium">AI Core Auth URL</span>
@@ -167,6 +217,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			<DebouncedTextField
 				initialValue={apiConfiguration?.sapAiResourceGroup || ""}
 				onChange={(value) => handleFieldChange("sapAiResourceGroup", value)}
+				onBlur={(value, hasChanged) => handleCredentialBlur("sapAiResourceGroup", value, hasChanged)}
 				style={{ width: "100%" }}
 				placeholder="Enter AI Core Resource Group...">
 				<span className="font-medium">AI Core Resource Group</span>
