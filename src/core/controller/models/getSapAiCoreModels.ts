@@ -2,6 +2,14 @@ import axios from "axios"
 import { Controller } from ".."
 import { SapAiCoreModelsRequest } from "@/shared/proto/cline/models"
 import { StringArray } from "@/shared/proto/cline/common"
+import fs from "fs/promises"
+import path from "path"
+import crypto from "crypto"
+import { fileExistsAtPath } from "@utils/fs"
+
+// Schema version for SAP AI Core cache structure
+// Increment this when adding new fields or changing cache structure
+const SAP_AI_CORE_CACHE_SCHEMA_VERSION = "1.0.0"
 
 interface Token {
 	access_token: string
@@ -76,6 +84,83 @@ async function fetchAiCoreModelNames(accessToken: string, baseUrl: string, resou
 	}
 }
 
+interface CachedSapAiCoreData {
+	modelNames: string[]
+	configHash: string
+	schemaVersion: string
+}
+
+/**
+ * Ensures the cache directory exists and returns its path
+ */
+async function ensureCacheDirectoryExists(controller: Controller): Promise<string> {
+	const cacheDir = path.join(controller.context.globalStorageUri.fsPath, "cache")
+	try {
+		await fs.mkdir(cacheDir, { recursive: true })
+	} catch (error) {
+		// Directory might already exist
+	}
+	return cacheDir
+}
+
+/**
+ * Generates a hash of the configuration for cache validation
+ */
+function generateConfigHash(request: SapAiCoreModelsRequest): string {
+	return crypto.createHash("md5").update(`${request.clientId}-${request.baseUrl}-${request.resourceGroup}`).digest("hex")
+}
+
+/**
+ * Gets cached SAP AI Core data if available and valid
+ */
+async function getCachedData(controller: Controller, configHash: string): Promise<CachedSapAiCoreData | null> {
+	const cacheFilePath = path.join(await ensureCacheDirectoryExists(controller), "sap_ai_core_models.json")
+
+	try {
+		if (await fileExistsAtPath(cacheFilePath)) {
+			const cachedData = JSON.parse(await fs.readFile(cacheFilePath, "utf-8")) as CachedSapAiCoreData
+
+			// Check BOTH config hash AND schema version
+			if (cachedData.configHash === configHash && cachedData.schemaVersion === SAP_AI_CORE_CACHE_SCHEMA_VERSION) {
+				return cachedData
+			}
+
+			// Log why cache was invalidated
+			if (cachedData.configHash !== configHash) {
+				console.log("SAP AI Core cache invalidated: configuration changed")
+			} else if (cachedData.schemaVersion !== SAP_AI_CORE_CACHE_SCHEMA_VERSION) {
+				console.log(
+					`SAP AI Core cache invalidated: schema version changed from ${cachedData.schemaVersion} to ${SAP_AI_CORE_CACHE_SCHEMA_VERSION}`,
+				)
+			}
+		}
+	} catch (error) {
+		console.error("Error reading SAP AI Core cache:", error)
+	}
+
+	return null
+}
+
+/**
+ * Saves SAP AI Core data to cache
+ */
+async function saveCachedData(controller: Controller, modelNames: string[], configHash: string): Promise<void> {
+	const cacheFilePath = path.join(await ensureCacheDirectoryExists(controller), "sap_ai_core_models.json")
+
+	const cacheData: CachedSapAiCoreData = {
+		modelNames,
+		configHash,
+		schemaVersion: SAP_AI_CORE_CACHE_SCHEMA_VERSION,
+	}
+
+	try {
+		await fs.writeFile(cacheFilePath, JSON.stringify(cacheData, null, 2))
+		console.log(`SAP AI Core models cached with schema version ${SAP_AI_CORE_CACHE_SCHEMA_VERSION}`)
+	} catch (error) {
+		console.error("Error saving SAP AI Core cache:", error)
+	}
+}
+
 /**
  * Fetches available models from SAP AI Core deployments
  * @param controller The controller instance
@@ -90,12 +175,26 @@ export async function getSapAiCoreModels(controller: Controller, request: SapAiC
 			return StringArray.create({ values: [] })
 		}
 
-		// Direct authentication and model name fetching
+		const configHash = generateConfigHash(request)
+
+		// 1. CHECK CACHE FIRST (unless forcing refresh)
+		if (!request.forceModelsRefresh) {
+			const cachedData = await getCachedData(controller, configHash)
+			if (cachedData) {
+				console.log("Using cached SAP AI Core models")
+				return StringArray.create({ values: cachedData.modelNames })
+			}
+		}
+
+		// 2. FETCH FROM API (cache miss OR forced refresh)
 		const token = await getToken(request.clientId, request.clientSecret, request.tokenUrl)
 		const modelNames = await fetchAiCoreModelNames(token.access_token, request.baseUrl, request.resourceGroup)
 
 		// Extract base model names (without version) and sort
 		const baseModelNames = modelNames.map((modelName) => modelName.split(":")[0].toLowerCase()).sort()
+
+		// 3. SAVE TO CACHE
+		await saveCachedData(controller, baseModelNames, configHash)
 
 		return StringArray.create({ values: baseModelNames })
 	} catch (error) {

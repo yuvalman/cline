@@ -104,6 +104,7 @@ message SapAiCoreModelsRequest {
   string base_url = 4;
   string token_url = 5;
   string resource_group = 6;
+  bool force_models_refresh = 7;
 }
 
 // Request for updating API configuration
