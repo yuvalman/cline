@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react"
+import { useMount } from "react-use"
 import { VSCodeLink, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { DebouncedTextField } from "../common/DebouncedTextField"
 import { ModelInfoView } from "../common/ModelInfoView"
@@ -10,18 +11,6 @@ import { ModelsServiceClient } from "@/services/grpc-client"
 import { SapAiCoreModelsRequest } from "@shared/proto/index.cline"
 import SapAiCoreModelPicker from "../SapAiCoreModelPicker"
 
-// Module-level cache that persists across component mounts within the same VSCode session
-let sessionCache: {
-	credentialsHash: string
-	models: string[]
-	orchestrationAvailable: boolean
-	hasChecked: boolean
-} | null = null
-
-// Helper function to create credentials hash for cache key
-const getCredentialsHash = (config: any) => {
-	return `${config?.sapAiCoreClientId || ""}-${config?.sapAiCoreBaseUrl || ""}-${config?.sapAiResourceGroup || ""}`
-}
 /**
  * Props for the SapAiCoreProvider component
  */
@@ -61,82 +50,61 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		apiConfiguration?.sapAiResourceGroup
 
 	// Function to fetch SAP AI Core models
-	const fetchSapAiCoreModels = useCallback(async () => {
-		if (!hasRequiredCredentials) {
-			setDeployedModelsArray([])
-			setOrchestrationAvailable(false)
-			setHasCheckedOrchestration(false)
-			// Clear cache for invalid credentials
-			sessionCache = null
-			return
-		}
-
-		setIsLoadingModels(true)
-		setModelError(null)
-
-		try {
-			const response = await ModelsServiceClient.getSapAiCoreModels(
-				SapAiCoreModelsRequest.create({
-					clientId: apiConfiguration.sapAiCoreClientId,
-					clientSecret: apiConfiguration.sapAiCoreClientSecret,
-					baseUrl: apiConfiguration.sapAiCoreBaseUrl,
-					tokenUrl: apiConfiguration.sapAiCoreTokenUrl,
-					resourceGroup: apiConfiguration.sapAiResourceGroup,
-				}),
-			)
-
-			const models = response?.modelNames || []
-			const orchestration = response?.orchestrationAvailable || false
-
-			// Update component state
-			setDeployedModelsArray(models)
-			setOrchestrationAvailable(orchestration)
-			setHasCheckedOrchestration(true)
-
-			// Update module-level cache
-			sessionCache = {
-				credentialsHash: getCredentialsHash(apiConfiguration),
-				models,
-				orchestrationAvailable: orchestration,
-				hasChecked: true,
+	const fetchSapAiCoreModels = useCallback(
+		async (forceModelsRefresh: boolean = false) => {
+			if (!hasRequiredCredentials) {
+				setDeployedModelsArray([])
+				setOrchestrationAvailable(false)
+				setHasCheckedOrchestration(false)
+				return
 			}
-		} catch (error) {
-			console.error("Error fetching SAP AI Core models:", error)
-			setModelError("Failed to fetch models. Please check your configuration.")
-			setDeployedModelsArray([])
-			setOrchestrationAvailable(false)
-			setHasCheckedOrchestration(true)
-			// Clear cache on error
-			sessionCache = null
-		} finally {
-			setIsLoadingModels(false)
-		}
-	}, [
-		apiConfiguration?.sapAiCoreClientId,
-		apiConfiguration?.sapAiCoreClientSecret,
-		apiConfiguration?.sapAiCoreBaseUrl,
-		apiConfiguration?.sapAiCoreTokenUrl,
-		apiConfiguration?.sapAiResourceGroup,
-	])
 
-	// Session-based caching with module-level persistence
-	useEffect(() => {
+			setIsLoadingModels(true)
+			setModelError(null)
+
+			try {
+				const response = await ModelsServiceClient.getSapAiCoreModels(
+					SapAiCoreModelsRequest.create({
+						clientId: apiConfiguration.sapAiCoreClientId,
+						clientSecret: apiConfiguration.sapAiCoreClientSecret,
+						baseUrl: apiConfiguration.sapAiCoreBaseUrl,
+						tokenUrl: apiConfiguration.sapAiCoreTokenUrl,
+						resourceGroup: apiConfiguration.sapAiResourceGroup,
+						forceModelsRefresh: forceModelsRefresh,
+					}),
+				)
+
+				const models = response?.modelNames || []
+				const orchestration = response?.orchestrationAvailable || false
+
+				// Update component state
+				setDeployedModelsArray(models)
+				setOrchestrationAvailable(orchestration)
+				setHasCheckedOrchestration(true)
+			} catch (error) {
+				console.error("Error fetching SAP AI Core models:", error)
+				setModelError("Failed to fetch models. Please check your configuration.")
+				setDeployedModelsArray([])
+				setOrchestrationAvailable(false)
+				setHasCheckedOrchestration(true)
+			} finally {
+				setIsLoadingModels(false)
+			}
+		},
+		[
+			apiConfiguration?.sapAiCoreClientId,
+			apiConfiguration?.sapAiCoreClientSecret,
+			apiConfiguration?.sapAiCoreBaseUrl,
+			apiConfiguration?.sapAiCoreTokenUrl,
+			apiConfiguration?.sapAiResourceGroup,
+		],
+	)
+
+	// Fetch models on component mount (like Hugging Face)
+	useMount(() => {
 		if (!showModelOptions || !hasRequiredCredentials) return
-
-		const currentCredentialsHash = getCredentialsHash(apiConfiguration)
-
-		// Check if we have valid cached data for these credentials
-		if (sessionCache && sessionCache.credentialsHash === currentCredentialsHash && sessionCache.hasChecked) {
-			// Use cached data - no API call needed
-			setDeployedModelsArray(sessionCache.models)
-			setOrchestrationAvailable(sessionCache.orchestrationAvailable)
-			setHasCheckedOrchestration(true)
-			return
-		}
-
-		// No cache or credentials changed - fetch fresh data
 		fetchSapAiCoreModels()
-	}, [showModelOptions, hasRequiredCredentials, fetchSapAiCoreModels])
+	})
 
 	// Handle automatic disabling of orchestration mode when not available
 	useEffect(() => {
@@ -261,7 +229,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 							<div className="text-xs text-[var(--vscode-errorForeground)]">
 								{modelError}
 								<button
-									onClick={fetchSapAiCoreModels}
+									onClick={() => fetchSapAiCoreModels(false)}
 									className="ml-2 text-[11px] px-1.5 py-0.5 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-none rounded-sm cursor-pointer">
 									Retry
 								</button>
@@ -274,13 +242,30 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 										configuration or ensure your deployments are deployed and running in the service instance
 									</div>
 								)}
-								<SapAiCoreModelPicker
-									sapAiCoreDeployedModels={deployedModelsArray}
-									selectedModelId={selectedModelId || ""}
-									onModelChange={handleModelChange}
-									placeholder="Select a model..."
-									useOrchestrationMode={apiConfiguration?.sapAiCoreUseOrchestrationMode ?? true}
-								/>
+								<div className="flex flex-col gap-2">
+									<SapAiCoreModelPicker
+										sapAiCoreDeployedModels={deployedModelsArray}
+										selectedModelId={selectedModelId || ""}
+										onModelChange={handleModelChange}
+										placeholder="Select a model..."
+										useOrchestrationMode={apiConfiguration?.sapAiCoreUseOrchestrationMode ?? true}
+									/>
+									<div
+										className="flex items-center justify-between"
+										style={{
+											visibility: apiConfiguration?.sapAiCoreUseOrchestrationMode ? "hidden" : "visible",
+										}}>
+										<span className="text-xs text-[var(--vscode-descriptionForeground)]">
+											{deployedModelsArray.length} model{deployedModelsArray.length !== 1 ? "s" : ""}{" "}
+											available
+										</span>
+										<button
+											onClick={() => fetchSapAiCoreModels(true)}
+											className="text-[11px] px-2 py-1 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-none rounded-sm cursor-pointer hover:bg-[var(--vscode-button-hoverBackground)]">
+											Refresh Models
+										</button>
+									</div>
+								</div>
 							</>
 						) : (
 							<div className="text-xs text-[var(--vscode-errorForeground)]">
