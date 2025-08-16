@@ -7,7 +7,7 @@ import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandler
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { Mode } from "@shared/storage/types"
 import { ModelsServiceClient } from "@/services/grpc-client"
-import { SapAiCoreModelsRequest } from "@shared/proto/index.cline"
+import { SapAiCoreModelsRequest } from "@shared/proto/cline/models"
 import SapAiCoreModelPicker from "../SapAiCoreModelPicker"
 /**
  * Props for the SapAiCoreProvider component
@@ -41,45 +41,49 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		apiConfiguration?.sapAiResourceGroup
 
 	// Function to fetch SAP AI Core models
-	const fetchSapAiCoreModels = useCallback(async () => {
-		if (!hasRequiredCredentials) {
-			setDeployedModelsArray([])
-			return
-		}
-
-		setIsLoadingModels(true)
-		setModelError(null)
-
-		try {
-			const response = await ModelsServiceClient.getSapAiCoreModels(
-				SapAiCoreModelsRequest.create({
-					clientId: apiConfiguration.sapAiCoreClientId,
-					clientSecret: apiConfiguration.sapAiCoreClientSecret,
-					baseUrl: apiConfiguration.sapAiCoreBaseUrl,
-					tokenUrl: apiConfiguration.sapAiCoreTokenUrl,
-					resourceGroup: apiConfiguration.sapAiResourceGroup,
-				}),
-			)
-
-			if (response && response.values) {
-				setDeployedModelsArray(response.values)
-			} else {
+	const fetchSapAiCoreModels = useCallback(
+		async (forceRefresh: boolean = false) => {
+			if (!hasRequiredCredentials) {
 				setDeployedModelsArray([])
+				return
 			}
-		} catch (error) {
-			console.error("Error fetching SAP AI Core models:", error)
-			setModelError("Failed to fetch models. Please check your configuration.")
-			setDeployedModelsArray([])
-		} finally {
-			setIsLoadingModels(false)
-		}
-	}, [
-		apiConfiguration?.sapAiCoreClientId,
-		apiConfiguration?.sapAiCoreClientSecret,
-		apiConfiguration?.sapAiCoreBaseUrl,
-		apiConfiguration?.sapAiCoreTokenUrl,
-		apiConfiguration?.sapAiResourceGroup,
-	])
+
+			setIsLoadingModels(true)
+			setModelError(null)
+
+			try {
+				const response = await ModelsServiceClient.getSapAiCoreModels(
+					SapAiCoreModelsRequest.create({
+						clientId: apiConfiguration.sapAiCoreClientId,
+						clientSecret: apiConfiguration.sapAiCoreClientSecret,
+						baseUrl: apiConfiguration.sapAiCoreBaseUrl,
+						tokenUrl: apiConfiguration.sapAiCoreTokenUrl,
+						resourceGroup: apiConfiguration.sapAiResourceGroup,
+						forceModelsRefresh: forceRefresh,
+					}),
+				)
+
+				if (response && response.values) {
+					setDeployedModelsArray(response.values)
+				} else {
+					setDeployedModelsArray([])
+				}
+			} catch (error) {
+				console.error("Error fetching SAP AI Core models:", error)
+				setModelError("Failed to fetch models. Please check your configuration.")
+				setDeployedModelsArray([])
+			} finally {
+				setIsLoadingModels(false)
+			}
+		},
+		[
+			apiConfiguration?.sapAiCoreClientId,
+			apiConfiguration?.sapAiCoreClientSecret,
+			apiConfiguration?.sapAiCoreBaseUrl,
+			apiConfiguration?.sapAiCoreTokenUrl,
+			apiConfiguration?.sapAiResourceGroup,
+		],
+	)
 
 	// Fetch models when configuration changes
 	useEffect(() => {
@@ -168,7 +172,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 							<div className="text-xs text-[var(--vscode-errorForeground)]">
 								{modelError}
 								<button
-									onClick={fetchSapAiCoreModels}
+									onClick={() => fetchSapAiCoreModels(false)}
 									className="ml-2 text-[11px] px-1.5 py-0.5 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-none rounded-sm cursor-pointer">
 									Retry
 								</button>
@@ -181,12 +185,25 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 										configuration or ensure your deployments are deployed and running in the service instance
 									</div>
 								)}
-								<SapAiCoreModelPicker
-									sapAiCoreDeployedModels={deployedModelsArray}
-									selectedModelId={selectedModelId || ""}
-									onModelChange={handleModelChange}
-									placeholder="Select a model..."
-								/>
+								<div className="flex flex-col gap-2">
+									<SapAiCoreModelPicker
+										sapAiCoreDeployedModels={deployedModelsArray}
+										selectedModelId={selectedModelId || ""}
+										onModelChange={handleModelChange}
+										placeholder="Select a model..."
+									/>
+									<div className="flex items-center justify-between">
+										<span className="text-xs text-[var(--vscode-descriptionForeground)]">
+											{deployedModelsArray.length} model{deployedModelsArray.length !== 1 ? "s" : ""}{" "}
+											available
+										</span>
+										<button
+											onClick={() => fetchSapAiCoreModels(true)}
+											className="text-[11px] px-2 py-1 bg-[var(--vscode-button-background)] text-[var(--vscode-button-foreground)] border-none rounded-sm cursor-pointer hover:bg-[var(--vscode-button-hoverBackground)]">
+											Refresh Models
+										</button>
+									</div>
+								</div>
 							</>
 						) : (
 							<div className="text-xs text-[var(--vscode-errorForeground)]">
