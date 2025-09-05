@@ -43,7 +43,7 @@ export class TaskState {
 	// Error tracking
 	consecutiveMistakeCount: number = 0
 	didAutomaticallyRetryFailedApiRequest = false
-	checkpointTrackerErrorMessage?: string
+	checkpointManagerErrorMessage?: string
 
 	// Task Initialization
 	isInitialized = false
@@ -61,4 +61,5 @@ export class TaskState {
 
 	// Auto-context summarization
 	currentlySummarizing: boolean = false
+	lastAutoCompactTriggerIndex?: number
 }

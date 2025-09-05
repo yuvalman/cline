@@ -1,31 +1,32 @@
-import * as vscode from "vscode"
+import { FocusChainSettings } from "@shared/FocusChainSettings"
 import * as fs from "fs/promises"
+import * as vscode from "vscode"
+import { featureFlagsService } from "@/services/feature-flags"
+import { telemetryService } from "@/services/telemetry"
+import { HostProvider } from "../../../hosts/host-provider"
+import { ClineSay } from "../../../shared/ExtensionMessage"
+import { FileChangeEvent_ChangeType, SubscribeToFileRequest } from "../../../shared/proto/host/watch"
+import { Mode } from "../../../shared/storage/types"
 import { writeFile } from "../../../utils/fs"
 import { ensureTaskDirectoryExists } from "../../storage/disk"
+import { StateManager } from "../../storage/StateManager"
 import { TaskState } from "../TaskState"
-import { Mode } from "../../../shared/storage/types"
-import { ClineSay } from "../../../shared/ExtensionMessage"
-import { HostProvider } from "../../../hosts/host-provider"
-import { SubscribeToFileRequest, FileChangeEvent_ChangeType } from "../../../shared/proto/host/watch"
-import { telemetryService, featureFlagsService } from "@services/posthog/PostHogClientProvider"
-import { parseFocusChainListCounts } from "./utils"
 import {
-	getFocusChainFilePath,
 	createFocusChainMarkdownContent,
-	extractFocusChainListFromText,
 	extractFocusChainItemsFromText,
+	extractFocusChainListFromText,
+	getFocusChainFilePath,
 } from "./file-utils"
-import { FocusChainSettings } from "@shared/FocusChainSettings"
-import { CacheService } from "../../storage/CacheService"
+import { parseFocusChainListCounts } from "./utils"
 
 export interface FocusChainDependencies {
 	taskId: string
 	taskState: TaskState
 	mode: Mode
 	context: vscode.ExtensionContext
-	cacheService: CacheService
+	stateManager: StateManager
 	postStateToWebview: () => Promise<void>
-	say: (type: ClineSay, text?: string, images?: string[], files?: string[], partial?: boolean) => Promise<undefined>
+	say: (type: ClineSay, text?: string, images?: string[], files?: string[], partial?: boolean) => Promise<number | undefined>
 	focusChainSettings: FocusChainSettings
 }
 
@@ -34,9 +35,15 @@ export class FocusChainManager {
 	private taskState: TaskState
 	private mode: Mode
 	private context: vscode.ExtensionContext
-	private cacheService: CacheService
+	private stateManager: StateManager
 	private postStateToWebview: () => Promise<void>
-	private say: (type: ClineSay, text?: string, images?: string[], files?: string[], partial?: boolean) => Promise<undefined>
+	private say: (
+		type: ClineSay,
+		text?: string,
+		images?: string[],
+		files?: string[],
+		partial?: boolean,
+	) => Promise<number | undefined>
 	private focusChainFileWatcherCancel?: () => void
 	private hasTrackedFirstProgress = false
 	private focusChainSettings: FocusChainSettings
@@ -47,7 +54,7 @@ export class FocusChainManager {
 		this.taskState = dependencies.taskState
 		this.mode = dependencies.mode
 		this.context = dependencies.context
-		this.cacheService = dependencies.cacheService
+		this.stateManager = dependencies.stateManager
 		this.postStateToWebview = dependencies.postStateToWebview
 		this.say = dependencies.say
 		this.focusChainSettings = dependencies.focusChainSettings
@@ -66,7 +73,7 @@ export class FocusChainManager {
 	private async initializeRemoteFeatureFlags(): Promise<void> {
 		try {
 			const enabled = await featureFlagsService.getFocusChainEnabled()
-			this.cacheService.setGlobalState("focusChainFeatureFlagEnabled", enabled)
+			this.stateManager.setGlobalState("focusChainFeatureFlagEnabled", enabled)
 			await this.postStateToWebview()
 		} catch (error) {
 			console.error("Error initializing focus chain remote feature flags:", error)
@@ -345,7 +352,7 @@ ${listInstrunctionsReminder}\n`
 			const todoList = extractFocusChainListFromText(markdownContent)
 
 			if (todoList) {
-				const todoLines = extractFocusChainItemsFromText(markdownContent)
+				const _todoLines = extractFocusChainItemsFromText(markdownContent)
 				return todoList
 			}
 
@@ -429,7 +436,7 @@ ${listInstrunctionsReminder}\n`
 				// No model update provided, check if markdown file exists and load it
 				const markdownTodoList = await this.readFocusChainFromDisk()
 				if (markdownTodoList) {
-					const previousList = this.taskState.currentFocusChainChecklist
+					const _previousList = this.taskState.currentFocusChainChecklist
 					this.taskState.currentFocusChainChecklist = markdownTodoList
 
 					// Create a task_progress message to display the focus chain list in the UI

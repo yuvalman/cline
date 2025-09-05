@@ -8,8 +8,8 @@ import { createRequire } from "module"
 import os from "os"
 import * as path from "path"
 import { rmrf } from "./file-utils.mjs"
-import { main as generateProtoBusSetup } from "./generate-protobus-setup.mjs"
 import { main as generateHostBridgeClient } from "./generate-host-bridge-client.mjs"
+import { main as generateProtoBusSetup } from "./generate-protobus-setup.mjs"
 import { loadProtoDescriptorSet } from "./proto-utils.mjs"
 
 const require = createRequire(import.meta.url)
@@ -31,7 +31,7 @@ const TS_PROTO_OPTIONS = [
 	"esModuleInterop=true",
 	"outputServices=generic-definitions", // output generic ServiceDefinitions
 	"outputIndex=true", // output an index file for each package which exports all protos in the package.
-	"useOptionals=messages", // Message fields are optional, scalars are not.
+	"useOptionals=none", // scalar and message fields are required unless they are marked as optional.
 	"useDate=false", // Timestamp fields will not be automatically converted to Date.
 ]
 
@@ -181,7 +181,7 @@ function checkAppleSiliconCompatibility() {
 				console.log(chalk.red("Aborting build process."))
 				process.exit(1)
 			}
-		} catch (error) {
+		} catch (_error) {
 			console.log(chalk.yellow("Could not determine Rosetta installation status. Proceeding anyway."))
 		}
 	}

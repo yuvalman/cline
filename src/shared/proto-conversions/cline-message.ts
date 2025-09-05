@@ -1,6 +1,6 @@
-import { ClineMessage as AppClineMessage, ClineAsk as AppClineAsk, ClineSay as AppClineSay } from "@shared/ExtensionMessage"
+import { ClineAsk as AppClineAsk, ClineMessage as AppClineMessage, ClineSay as AppClineSay } from "@shared/ExtensionMessage"
 
-import { ClineMessage as ProtoClineMessage, ClineMessageType, ClineAsk, ClineSay } from "@shared/proto/cline/ui"
+import { ClineAsk, ClineMessageType, ClineSay, ClineMessage as ProtoClineMessage } from "@shared/proto/cline/ui"
 
 // Helper function to convert ClineAsk string to enum
 function convertClineAskToProtoEnum(ask: AppClineAsk | undefined): ClineAsk | undefined {
@@ -188,6 +188,15 @@ export function convertClineMessageToProto(message: AppClineMessage): ProtoCline
 					endIndex: message.conversationHistoryDeletedRange[1],
 				}
 			: undefined,
+		// Additional optional fields for specific ask/say types
+		sayTool: undefined,
+		sayBrowserAction: undefined,
+		browserActionResult: undefined,
+		askUseMcpServer: undefined,
+		planModeResponse: undefined,
+		askQuestion: undefined,
+		askNewTask: undefined,
+		apiReqInfo: undefined,
 	}
 
 	return protoMessage

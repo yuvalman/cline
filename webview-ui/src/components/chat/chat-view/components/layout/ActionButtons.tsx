@@ -38,6 +38,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 	const [secondaryButtonText, setSecondaryButtonText] = useState<string | undefined>(undefined)
 
 	const [enableButtons, setEnableButtons] = useState<boolean>(false)
+	const [isProcessingClick, setIsProcessingClick] = useState<boolean>(false)
 
 	const [lastMessage, secondLastMessage] = useMemo(() => {
 		return [messages.at(-1), messages.at(-2)]
@@ -60,6 +61,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 		setSendingDisabled(buttonConfig.sendingDisabled)
 		setPrimaryButtonText(buttonConfig.primaryText)
 		setSecondaryButtonText(buttonConfig.secondaryText)
+		// Reset processing state when configuration changes (new message received)
+		setIsProcessingClick(false)
 	}, [lastMessage, mode, setSendingDisabled])
 
 	useEffect(() => {
@@ -69,6 +72,8 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 			setSendingDisabled(buttonConfig.sendingDisabled)
 			setPrimaryButtonText(buttonConfig.primaryText)
 			setSecondaryButtonText(buttonConfig.secondaryText)
+			// Reset processing state when no messages
+			setIsProcessingClick(false)
 		}
 	}, [messages, setSendingDisabled])
 
@@ -85,9 +90,10 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 		}
 
 		return (
-			<div className="flex px-[15px] pt-[10px]">
+			<div className="flex px-[15px]">
 				<VSCodeButton
 					appearance="icon"
+					aria-label="Scroll to bottom"
 					className="text-lg text-[var(--vscode-primaryButton-foreground)] bg-[color-mix(in_srgb,var(--vscode-toolbar-hoverBackground)_55%,transparent)] rounded-[3px] overflow-hidden cursor-pointer flex justify-center items-center flex-1 h-[25px] hover:bg-[color-mix(in_srgb,var(--vscode-toolbar-hoverBackground)_90%,transparent)] active:bg-[color-mix(in_srgb,var(--vscode-toolbar-hoverBackground)_70%,transparent)] border-0"
 					onClick={handleScrollToBottom}
 					onKeyDown={(e) => {
@@ -95,8 +101,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 							e.preventDefault()
 							handleScrollToBottom()
 						}
-					}}
-					aria-label="Scroll to bottom">
+					}}>
 					<span className="codicon codicon-chevron-down" />
 				</VSCodeButton>
 			</div>
@@ -104,33 +109,46 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 	}
 
 	const shouldShowButtons = primaryButtonText || secondaryButtonText
-	const opacity = shouldShowButtons ? (enableButtons || isStreaming ? 1 : 0.5) : 0
+	const enableAndNotProcessing = enableButtons && !isProcessingClick
+	const opacity = shouldShowButtons ? (enableAndNotProcessing || isStreaming ? 1 : 0.5) : 0
+
+	const handlePrimaryClick = async () => {
+		if (!primaryButtonText) {
+			return
+		}
+		setIsProcessingClick(true)
+		if (primaryButtonText === "Start New Task") {
+			messageHandlers.startNewTask()
+		} else {
+			messageHandlers.handleButtonClick(primaryButtonText, inputValue, selectedImages, selectedFiles)
+		}
+	}
+
+	const handleSecondaryClick = async () => {
+		if (!secondaryButtonText) {
+			return
+		}
+		setIsProcessingClick(true)
+		messageHandlers.handleButtonClick(secondaryButtonText, inputValue, selectedImages, selectedFiles)
+	}
 
 	return (
-		<div className={`flex px-[15px] ${shouldShowButtons ? "pt-[10px]" : "pt-0"}`} style={{ opacity }}>
+		<div className="flex px-[15px]" style={{ opacity }}>
 			{primaryButtonText && (
 				<VSCodeButton
 					appearance="primary"
-					disabled={!enableButtons}
 					className={`${secondaryButtonText ? "flex-1 mr-[6px]" : "flex-[2]"}`}
-					onClick={() => {
-						if (primaryButtonText === "Start New Task") {
-							messageHandlers.startNewTask()
-						} else {
-							messageHandlers.handleButtonClick(primaryButtonText, inputValue, selectedImages, selectedFiles)
-						}
-					}}>
+					disabled={!enableAndNotProcessing}
+					onClick={handlePrimaryClick}>
 					{primaryButtonText}
 				</VSCodeButton>
 			)}
 			{secondaryButtonText && (
 				<VSCodeButton
 					appearance="secondary"
-					disabled={!enableButtons}
 					className={`${primaryButtonText ? "flex-1 mr-[6px]" : "flex-[2]"}`}
-					onClick={() => {
-						messageHandlers.handleButtonClick(secondaryButtonText, inputValue, selectedImages, selectedFiles)
-					}}>
+					disabled={!enableAndNotProcessing}
+					onClick={handleSecondaryClick}>
 					{secondaryButtonText}
 				</VSCodeButton>
 			)}

@@ -1,8 +1,8 @@
-import * as path from "path"
-import { Controller } from ".."
-import { Empty, StringRequest } from "@shared/proto/cline/common"
+import { workspaceResolver } from "@core/workspace"
 import { openFile as openFileIntegration } from "@integrations/misc/open-file"
+import { Empty, StringRequest } from "@shared/proto/cline/common"
 import { getWorkspacePath } from "@utils/path"
+import { Controller } from ".."
 
 /**
  * Opens a file in the editor by a relative path
@@ -20,7 +20,12 @@ export async function openFileRelativePath(_controller: Controller, request: Str
 
 	if (request.value) {
 		// Resolve the relative path to absolute path
-		const absolutePath = path.resolve(workspacePath, request.value)
+		const resolvedPath = workspaceResolver.resolveWorkspacePath(
+			workspacePath,
+			request.value,
+			"Controller.openFileRelativePath",
+		)
+		const absolutePath = typeof resolvedPath === "string" ? resolvedPath : resolvedPath.absolutePath
 
 		// Open the file using the existing integration
 		openFileIntegration(absolutePath)
