@@ -31,15 +31,23 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 }) => {
 	// Auto-fix deployment ID mismatch or missing deployment ID when deployments change
 	useEffect(() => {
-		if (!selectedModelId || sapAiCoreModelDeployments.length === 0) {
+		if (!selectedModelId) {
 			return
 		}
 
 		const matchingDeployment = sapAiCoreModelDeployments.find((d) => d.modelName === selectedModelId)
 
-		if (matchingDeployment && (!selectedDeploymentId || matchingDeployment.deploymentId !== selectedDeploymentId)) {
-			onModelChange(selectedModelId, matchingDeployment.deploymentId)
+		if (matchingDeployment) {
+			// Case 1: Deployment found - update if different
+			if (!selectedDeploymentId || matchingDeployment.deploymentId !== selectedDeploymentId) {
+				onModelChange(selectedModelId, matchingDeployment.deploymentId)
+			}
+		} else if (sapAiCoreModelDeployments.length > 0 && selectedDeploymentId) {
+			// Case 2: We have deployments loaded, but none match the selected model
+			// AND we have a stale deployment ID - clear it
+			onModelChange(selectedModelId, "")
 		}
+		// If sapAiCoreModelDeployments.length === 0, do nothing (might still be loading)
 	}, [sapAiCoreModelDeployments, selectedModelId, selectedDeploymentId, onModelChange])
 
 	const handleModelChange = (e: any) => {
@@ -49,8 +57,13 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 
 		// Find the deployment that matches the selected model
 		const deployment = sapAiCoreModelDeployments.find((d) => d.modelName === selectedValue)
+
 		if (deployment) {
+			// Deployed model: use the deployment ID
 			onModelChange(deployment.modelName, deployment.deploymentId)
+		} else {
+			// Undeployed model: use empty deployment ID
+			onModelChange(selectedValue, "")
 		}
 	}
 

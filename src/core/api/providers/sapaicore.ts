@@ -484,7 +484,7 @@ export class SapAiCoreHandler implements ApiHandler {
 		const deploymentId = this.options.deploymentId
 
 		if (!deploymentId) {
-			throw new Error("SAP AI Core deployment ID is required but not provided")
+			throw new Error(`No running deployment found for model ${model.id}`)
 		}
 
 		const anthropicModels = [
