@@ -51,19 +51,21 @@ const SapAiCoreModelPicker: React.FC<SapAiCoreModelPickerProps> = ({
 	}, [sapAiCoreModelDeployments, selectedModelId, selectedDeploymentId, onModelChange])
 
 	const handleModelChange = (e: any) => {
-		const selectedValue = e.target.value
+		const newModelId = e.target.value
 
-		if (!selectedValue) return
+		if (!newModelId) {
+			return
+		}
 
 		// Find the deployment that matches the selected model
-		const deployment = sapAiCoreModelDeployments.find((d) => d.modelName === selectedValue)
+		const deployment = sapAiCoreModelDeployments.find((d) => d.modelName === newModelId)
 
 		if (deployment) {
 			// Deployed model: use the deployment ID
 			onModelChange(deployment.modelName, deployment.deploymentId)
 		} else {
 			// Undeployed model: use empty deployment ID
-			onModelChange(selectedValue, "")
+			onModelChange(newModelId, "")
 		}
 	}
 
