@@ -309,12 +309,10 @@ function parseToolCall(toolName: string, content: string): ToolCall | null {
 	const paramRegex = /<(\w+)>([\s\S]*?)<\/\1>/gs
 	let match: RegExpExecArray | null
 
-	match = paramRegex.exec(innerContent)
-	while (match !== null) {
+	while ((match = paramRegex.exec(innerContent)) !== null) {
 		const [, paramName, paramValue] = match
 		// Preserve newlines and trim only leading/trailing whitespace
 		tool_input[paramName] = paramValue.replace(/^\s+|\s+$/g, "")
-		match = paramRegex.exec(innerContent)
 	}
 
 	// Validate required parameters

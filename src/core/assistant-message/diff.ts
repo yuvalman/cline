@@ -590,9 +590,7 @@ class NewFileContentConstructor {
 			}
 			if (this.hasPendingNonStandardLines(pendingNonStandardLineLimit)) {
 				this.tryFixSearchReplaceBlock(pendingNonStandardLineLimit)
-				if (canWritependingNonStandardLines) {
-					this.pendingNonStandardLines.length = 0
-				}
+				canWritependingNonStandardLines && (this.pendingNonStandardLines.length = 0)
 			}
 			this.activateSearchState()
 		} else if (isSearchBlockEnd(line)) {

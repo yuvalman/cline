@@ -761,12 +761,7 @@ export class AwsBedrockHandler implements ApiHandler {
 		const formattedMessages = this.formatMessagesForConverseAPI(messages)
 
 		// Get model info and message indices for caching
-		const userMsgIndices = messages.reduce((acc, msg, index) => {
-			if (msg.role === "user") {
-				acc.push(index)
-			}
-			return acc
-		}, [] as number[])
+		const userMsgIndices = messages.reduce((acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc), [] as number[])
 		const lastUserMsgIndex = userMsgIndices[userMsgIndices.length - 1] ?? -1
 		const secondLastMsgUserIndex = userMsgIndices[userMsgIndices.length - 2] ?? -1
 
@@ -883,11 +878,7 @@ export class AwsBedrockHandler implements ApiHandler {
 				imageData = new Uint8Array(Buffer.from(base64Data, "base64"))
 			} else if (item.source.data && typeof item.source.data === "object") {
 				// Try to convert to Uint8Array
-				if (Buffer.isBuffer(item.source.data)) {
-					imageData = new Uint8Array(item.source.data)
-				} else {
-					imageData = new Uint8Array(item.source.data as Uint8Array)
-				}
+				imageData = new Uint8Array(Buffer.from(item.source.data as Buffer | Uint8Array))
 			} else {
 				throw new Error("Unsupported image data format")
 			}
@@ -958,12 +949,7 @@ export class AwsBedrockHandler implements ApiHandler {
 		const formattedMessages = this.formatMessagesForConverseAPI(messages)
 
 		// Get model info and message indices for caching (for Nova models that support it)
-		const userMsgIndices = messages.reduce((acc, msg, index) => {
-			if (msg.role === "user") {
-				acc.push(index)
-			}
-			return acc
-		}, [] as number[])
+		const userMsgIndices = messages.reduce((acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc), [] as number[])
 		const lastUserMsgIndex = userMsgIndices[userMsgIndices.length - 1] ?? -1
 		const secondLastMsgUserIndex = userMsgIndices[userMsgIndices.length - 2] ?? -1
 
