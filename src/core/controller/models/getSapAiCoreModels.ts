@@ -40,19 +40,19 @@ async function getToken(clientId: string, clientSecret: string, tokenUrl: string
 }
 
 /**
- * Fetches deployments and orchestration availability from SAP AI Core deployments
+ * Fetches deployments and orchestration deployment ID from SAP AI Core deployments
  * @param accessToken Access token for authentication
  * @param baseUrl SAP AI Core base URL
  * @param resourceGroup SAP AI Core resource group
- * @returns Promise<{deployments: Deployment[], orchestrationAvailable: boolean}> Deployments and orchestration availability
+ * @returns Promise<{deployments: Deployment[], orchestrationDeploymentId: string | undefined}> Deployments and orchestration deployment ID
  */
 async function fetchAiCoreDeploymentsAndOrchestration(
 	accessToken: string,
 	baseUrl: string,
 	resourceGroup: string,
-): Promise<{ deployments: Deployment[]; orchestrationAvailable: boolean }> {
+): Promise<{ deployments: Deployment[]; orchestrationDeploymentId: string | undefined }> {
 	if (!accessToken) {
-		return { deployments: [], orchestrationAvailable: false }
+		return { deployments: [], orchestrationDeploymentId: undefined }
 	}
 
 	const headers = {
@@ -71,8 +71,9 @@ async function fetchAiCoreDeploymentsAndOrchestration(
 		// Filter running deployments
 		const runningDeployments = allDeployments.filter((deployment: any) => deployment.targetStatus === "RUNNING")
 
-		// Check for orchestration deployment
-		const orchestrationAvailable = runningDeployments.some((deployment: any) => deployment.scenarioId === "orchestration")
+		// Find orchestration deployment ID
+		const orchestrationDeployment = runningDeployments.find((deployment: any) => deployment.scenarioId === "orchestration")
+		const orchestrationDeploymentId = orchestrationDeployment?.id
 
 		// Extract deployments with model names and IDs
 		const deployments = runningDeployments
@@ -88,7 +89,7 @@ async function fetchAiCoreDeploymentsAndOrchestration(
 			})
 			.filter((deployment: any) => deployment !== null)
 
-		return { deployments, orchestrationAvailable }
+		return { deployments, orchestrationDeploymentId }
 	} catch (error) {
 		console.error("Error fetching deployments:", error)
 		throw new Error("Failed to fetch deployments")
@@ -117,7 +118,7 @@ export async function getSapAiCoreModels(
 
 		// Direct authentication and deployment/orchestration fetching
 		const token = await getToken(request.clientId, request.clientSecret, request.tokenUrl)
-		const { deployments, orchestrationAvailable } = await fetchAiCoreDeploymentsAndOrchestration(
+		const { deployments, orchestrationDeploymentId } = await fetchAiCoreDeploymentsAndOrchestration(
 			token.access_token,
 			request.baseUrl,
 			request.resourceGroup,
@@ -136,7 +137,8 @@ export async function getSapAiCoreModels(
 
 		return SapAiCoreModelsResponse.create({
 			deployments: modelDeployments,
-			orchestrationAvailable,
+			orchestrationAvailable: !!orchestrationDeploymentId,
+			orchestrationDeploymentId: orchestrationDeploymentId,
 		})
 	} catch (error) {
 		console.error("Error fetching SAP AI Core models:", error)

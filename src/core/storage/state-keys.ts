@@ -106,6 +106,7 @@ export interface GlobalState {
 	planModeFireworksModelId: string | undefined
 	planModeSapAiCoreModelId: string | undefined
 	planModeSapAiCoreDeploymentId: string | undefined
+	planModeSapAiCoreOrchestrationDeploymentId: string | undefined
 	planModeGroqModelId: string | undefined
 	planModeGroqModelInfo: ModelInfo | undefined
 	planModeBasetenModelId: string | undefined
@@ -136,6 +137,7 @@ export interface GlobalState {
 	actModeFireworksModelId: string | undefined
 	actModeSapAiCoreModelId: string | undefined
 	actModeSapAiCoreDeploymentId: string | undefined
+	actModeSapAiCoreOrchestrationDeploymentId: string | undefined
 	actModeGroqModelId: string | undefined
 	actModeGroqModelInfo: ModelInfo | undefined
 	actModeBasetenModelId: string | undefined
