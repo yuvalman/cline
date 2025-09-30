@@ -4,11 +4,12 @@ import {
 	ConversationRole as BedrockConversationRole,
 	type Message as BedrockMessage,
 } from "@aws-sdk/client-bedrock-runtime"
-import { ChatMessages, LlmModuleConfig, OrchestrationClient, TemplatingModuleConfig } from "@sap-ai-sdk/orchestration"
+import { ChatMessage, OrchestrationClient } from "@sap-ai-sdk/orchestration"
 import { ModelInfo, SapAiCoreModelId, sapAiCoreDefaultModelId, sapAiCoreModels } from "@shared/api"
 import axios from "axios"
 import OpenAI from "openai"
 import { ApiHandler, CommonApiHandlerOptions } from "../"
+import { withRetry } from "../retry"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 
@@ -454,8 +455,9 @@ export class SapAiCoreHandler implements ApiHandler {
 		return this.deployments?.some((d) => d.name.split(":")[0].toLowerCase() === modelId.split(":")[0].toLowerCase()) ?? false
 	}
 
+	@withRetry()
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-		if (this.options.sapAiCoreUseOrchestrationMode ?? true) {
+		if (this.options.sapAiCoreUseOrchestrationMode) {
 			yield* this.createMessageWithOrchestration(systemPrompt, messages)
 		} else {
 			yield* this.createMessageWithDeployments(systemPrompt, messages)
@@ -491,23 +493,22 @@ export class SapAiCoreHandler implements ApiHandler {
 			// Ensure AI Core environment variable is set up (only runs once)
 			this.ensureAiCoreEnvSetup()
 			const model = this.getModel()
-
-			// Define the LLM to be used by the Orchestration pipeline
-			const llm: LlmModuleConfig = {
-				model_name: model.id,
-				model_params: { max_tokens: model.info.maxTokens },
-			}
-
-			const templating: TemplatingModuleConfig = {
-				template: [
-					{
-						role: "system",
-						content: systemPrompt,
-					},
-				],
-			}
 			const orchestrationClient = new OrchestrationClient(
-				{ llm, templating },
+				{
+					promptTemplating: {
+						model: {
+							name: model.id,
+						},
+						prompt: {
+							template: [
+								{
+									role: "system",
+									content: systemPrompt,
+								},
+							],
+						},
+					},
+				},
 				{ resourceGroup: this.options.sapAiResourceGroup || "default" },
 			)
 
@@ -824,16 +825,13 @@ export class SapAiCoreHandler implements ApiHandler {
 
 							// Handle metadata (token usage)
 							if (data.metadata?.usage) {
+								// inputTokens does not include cached write/read tokens
 								let inputTokens = data.metadata.usage.inputTokens || 0
 								const outputTokens = data.metadata.usage.outputTokens || 0
 
-								// calibrate input token
-								const totalTokens = data.metadata.usage.totalTokens || 0
 								const cacheReadInputTokens = data.metadata.usage.cacheReadInputTokens || 0
-								const cacheWriteOutputTokens = data.metadata.usage.cacheWriteOutputTokens || 0
-								if (inputTokens + outputTokens + cacheReadInputTokens + cacheWriteOutputTokens !== totalTokens) {
-									inputTokens = totalTokens - outputTokens - cacheReadInputTokens - cacheWriteOutputTokens
-								}
+								const cacheWriteInputTokens = data.metadata.usage.cacheWriteInputTokens || 0
+								inputTokens = inputTokens + cacheReadInputTokens + cacheWriteInputTokens
 
 								yield {
 									type: "usage",
@@ -1036,8 +1034,8 @@ export class SapAiCoreHandler implements ApiHandler {
 		}
 		return { id: sapAiCoreDefaultModelId, info: sapAiCoreModels[sapAiCoreDefaultModelId] }
 	}
-	private convertMessageParamToSAPMessages(messages: Anthropic.Messages.MessageParam[]): ChatMessages {
+	private convertMessageParamToSAPMessages(messages: Anthropic.Messages.MessageParam[]): ChatMessage[] {
 		// Use the existing OpenAI converter since the logic is identical
-		return convertToOpenAiMessages(messages) as ChatMessages
+		return convertToOpenAiMessages(messages) as ChatMessage[]
 	}
 }

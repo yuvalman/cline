@@ -8,9 +8,9 @@ import TaskTimelineTooltip from "./TaskTimelineTooltip"
 import { getColor } from "./util"
 
 // Timeline dimensions and spacing
-const TIMELINE_HEIGHT = "13px"
-const BLOCK_WIDTH = "13px"
-const BLOCK_GAP = "3px"
+const TIMELINE_HEIGHT = "12px"
+const BLOCK_WIDTH = "11px"
+const BLOCK_GAP = "4px"
 const _TOOLTIP_MARGIN = 32 // 32px margin on each side
 
 interface TaskTimelineProps {
@@ -21,6 +21,7 @@ interface TaskTimelineProps {
 const TaskTimeline: React.FC<TaskTimelineProps> = ({ messages, onBlockClick }) => {
 	const containerRef = useRef<HTMLDivElement>(null)
 	const scrollableRef = useRef<HTMLDivElement>(null)
+	const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null)
 
 	const { taskTimelinePropsMessages, messageIndexMap } = useMemo(() => {
 		if (messages.length <= 1) {
@@ -42,7 +43,8 @@ const TaskTimeline: React.FC<TaskTimelineProps> = ({ messages, onBlockClick }) =
 					msg.say === "deleted_api_reqs" ||
 					msg.say === "checkpoint_created" ||
 					msg.say === "task_progress" ||
-					(msg.say === "text" && (!msg.text || msg.text.trim() === "")))
+					msg.say === "text" ||
+					msg.say === "reasoning")
 			) {
 				return false
 			}
@@ -84,11 +86,12 @@ const TaskTimeline: React.FC<TaskTimelineProps> = ({ messages, onBlockClick }) =
 					<div
 						style={{
 							width: BLOCK_WIDTH,
-							height: "100%",
+							height: BLOCK_WIDTH,
 							backgroundColor: "#e5e5e5", // Light gray placeholder
 							flexShrink: 0,
 							marginRight: BLOCK_GAP,
 							opacity: 0.5,
+							borderRadius: "50%",
 						}}
 					/>
 				)
@@ -103,23 +106,38 @@ const TaskTimeline: React.FC<TaskTimelineProps> = ({ messages, onBlockClick }) =
 				}
 			}
 
+			const handleMouseEnter = () => {
+				setHoveredIndex(index)
+			}
+
+			const handleMouseLeave = () => {
+				setHoveredIndex(null)
+			}
+
+			const isHovered = hoveredIndex === index
+
 			return (
 				<TaskTimelineTooltip message={message}>
 					<div
 						onClick={handleClick}
+						onMouseEnter={handleMouseEnter}
+						onMouseLeave={handleMouseLeave}
 						style={{
 							width: BLOCK_WIDTH,
-							height: "100%",
+							height: BLOCK_WIDTH,
 							backgroundColor: getColor(message),
 							flexShrink: 0,
 							cursor: "pointer",
 							marginRight: BLOCK_GAP,
+							opacity: isHovered ? 0.7 : 1,
+							transition: "opacity 0.2s ease",
+							borderRadius: 1.5,
 						}}
 					/>
 				</TaskTimelineTooltip>
 			)
 		},
-		[taskTimelinePropsMessages, messageIndexMap, onBlockClick],
+		[taskTimelinePropsMessages, messageIndexMap, onBlockClick, hoveredIndex],
 	)
 
 	// Scroll to the end when messages change
