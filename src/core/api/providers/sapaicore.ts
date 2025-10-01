@@ -495,15 +495,12 @@ export class SapAiCoreHandler implements ApiHandler {
 			this.ensureAiCoreEnvSetup()
 			const model = this.getModel()
 
-			// Handle orchestration deployment ID with fallback to resource group
-			let orchestrationConfig: { deploymentId?: string; resourceGroup?: string }
+			// Always include resource group, add deployment ID only when provided
+			let orchestrationConfig: { deploymentId?: string; resourceGroup: string }
+			orchestrationConfig = { resourceGroup: this.options.sapAiResourceGroup || "default" }
 
 			if (this.options.orchestrationDeploymentId) {
-				orchestrationConfig = { deploymentId: this.options.orchestrationDeploymentId }
-			} else {
-				// Fallback to resource group when no orchestration deployment ID is provided
-				console.log("No orchestration deployment ID provided, falling back to resource group")
-				orchestrationConfig = { resourceGroup: this.options.sapAiResourceGroup || "default" }
+				orchestrationConfig.deploymentId = this.options.orchestrationDeploymentId
 			}
 
 			const orchestrationClient = new OrchestrationClient(
