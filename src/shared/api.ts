@@ -242,8 +242,8 @@ export interface OcaModelInfo extends OpenAiCompatibleModelInfo {
 	surveyContent?: string
 }
 
-export const CLAUDE_SONNET_4_1M_SUFFIX = ":1m"
-export const CLAUDE_SONNET_4_1M_TIERS = [
+export const CLAUDE_SONNET_1M_SUFFIX = ":1m"
+export const CLAUDE_SONNET_1M_TIERS = [
 	{
 		contextWindow: 200000,
 		inputPrice: 3.0,
@@ -265,8 +265,30 @@ export const CLAUDE_SONNET_4_1M_TIERS = [
 export type AnthropicModelId = keyof typeof anthropicModels
 export const anthropicDefaultModelId: AnthropicModelId = "claude-sonnet-4-5-20250929"
 export const ANTHROPIC_MIN_THINKING_BUDGET = 1_024
+export const ANTHROPIC_MAX_THINKING_BUDGET = 6_000
 export const anthropicModels = {
 	"claude-sonnet-4-5-20250929": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+	},
+	"claude-sonnet-4-5-20250929:1m": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+		tiers: CLAUDE_SONNET_1M_TIERS,
+	},
+	"claude-sonnet-4-20250514": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
@@ -285,18 +307,7 @@ export const anthropicModels = {
 		outputPrice: 15.0,
 		cacheWritesPrice: 3.75,
 		cacheReadsPrice: 0.3,
-		tiers: CLAUDE_SONNET_4_1M_TIERS,
-	},
-	"claude-sonnet-4-20250514": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-
-		supportsPromptCache: true,
-		inputPrice: 3.0,
-		outputPrice: 15.0,
-		cacheWritesPrice: 3.75,
-		cacheReadsPrice: 0.3,
+		tiers: CLAUDE_SONNET_1M_TIERS,
 	},
 	"claude-opus-4-1-20250805": {
 		maxTokens: 8192,
@@ -374,8 +385,23 @@ export const anthropicModels = {
 
 // Claude Code
 export type ClaudeCodeModelId = keyof typeof claudeCodeModels
-export const claudeCodeDefaultModelId: ClaudeCodeModelId = "claude-sonnet-4-20250514"
+export const claudeCodeDefaultModelId: ClaudeCodeModelId = "claude-sonnet-4-5-20250929"
 export const claudeCodeModels = {
+	sonnet: {
+		...anthropicModels["claude-sonnet-4-5-20250929"],
+		supportsImages: false,
+		supportsPromptCache: false,
+	},
+	opus: {
+		...anthropicModels["claude-opus-4-1-20250805"],
+		supportsImages: false,
+		supportsPromptCache: false,
+	},
+	"claude-sonnet-4-5-20250929": {
+		...anthropicModels["claude-sonnet-4-5-20250929"],
+		supportsImages: false,
+		supportsPromptCache: false,
+	},
 	"claude-sonnet-4-20250514": {
 		...anthropicModels["claude-sonnet-4-20250514"],
 		supportsImages: false,
@@ -393,11 +419,6 @@ export const claudeCodeModels = {
 	},
 	"claude-3-7-sonnet-20250219": {
 		...anthropicModels["claude-3-7-sonnet-20250219"],
-		supportsImages: false,
-		supportsPromptCache: false,
-	},
-	"claude-3-5-sonnet-20241022": {
-		...anthropicModels["claude-3-5-sonnet-20241022"],
 		supportsImages: false,
 		supportsPromptCache: false,
 	},
@@ -423,7 +444,7 @@ export const bedrockModels = {
 		cacheWritesPrice: 3.75,
 		cacheReadsPrice: 0.3,
 	},
-	"anthropic.claude-sonnet-4-20250514-v1:0:1m": {
+	"anthropic.claude-sonnet-4-5-20250929-v1:0:1m": {
 		maxTokens: 8192,
 		contextWindow: 1_000_000,
 		supportsImages: true,
@@ -432,7 +453,7 @@ export const bedrockModels = {
 		outputPrice: 15.0,
 		cacheWritesPrice: 3.75,
 		cacheReadsPrice: 0.3,
-		tiers: CLAUDE_SONNET_4_1M_TIERS,
+		tiers: CLAUDE_SONNET_1M_TIERS,
 	},
 	"anthropic.claude-sonnet-4-20250514-v1:0": {
 		maxTokens: 8192,
@@ -443,6 +464,17 @@ export const bedrockModels = {
 		outputPrice: 15.0,
 		cacheWritesPrice: 3.75,
 		cacheReadsPrice: 0.3,
+	},
+	"anthropic.claude-sonnet-4-20250514-v1:0:1m": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+		tiers: CLAUDE_SONNET_1M_TIERS,
 	},
 	"anthropic.claude-opus-4-20250514-v1:0": {
 		maxTokens: 8192,
@@ -603,7 +635,8 @@ export const bedrockModels = {
 // OpenRouter
 // https://openrouter.ai/models?order=newest&supported_parameters=tools
 export const openRouterDefaultModelId = "anthropic/claude-sonnet-4.5" // will always exist in openRouterModels
-export const openRouterClaudeSonnet41mModelId = `anthropic/claude-sonnet-4${CLAUDE_SONNET_4_1M_SUFFIX}`
+export const openRouterClaudeSonnet41mModelId = `anthropic/claude-sonnet-4${CLAUDE_SONNET_1M_SUFFIX}`
+export const openRouterClaudeSonnet451mModelId = `anthropic/claude-sonnet-4.5${CLAUDE_SONNET_1M_SUFFIX}`
 export const openRouterDefaultModelInfo: ModelInfo = {
 	maxTokens: 8192,
 	contextWindow: 200_000,
@@ -632,8 +665,18 @@ export const clineCodeSupernovaModelInfo: ModelInfo = {
 // https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude
 // https://cloud.google.com/vertex-ai/generative-ai/pricing#partner-models
 export type VertexModelId = keyof typeof vertexModels
-export const vertexDefaultModelId: VertexModelId = "claude-sonnet-4@20250514"
+export const vertexDefaultModelId: VertexModelId = "claude-sonnet-4@20250514" // TODO: update to 4-5
 export const vertexModels = {
+	"claude-sonnet-4-5@20250929": {
+		maxTokens: 8192,
+		contextWindow: 200_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 3.0,
+		outputPrice: 15.0,
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+	},
 	"claude-sonnet-4@20250514": {
 		maxTokens: 8192,
 		contextWindow: 200_000,
