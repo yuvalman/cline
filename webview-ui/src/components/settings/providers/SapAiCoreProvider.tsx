@@ -115,7 +115,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		}
 	}, [hasCheckedOrchestration, orchestrationAvailable, apiConfiguration?.sapAiCoreUseOrchestrationMode, handleFieldChange])
 
-	// Auto-fix orchestration deployment ID when it changes (prevent redundant updates)
+	// Auto-fix orchestration deployment ID when it changes
 	useEffect(() => {
 		if (!orchestrationDeploymentId) {
 			return

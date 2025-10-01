@@ -468,9 +468,9 @@ export class SapAiCoreHandler implements ApiHandler {
 	// TODO: support credentials changes after initial setup
 	private ensureAiCoreEnvSetup(): void {
 		// Only set up once to avoid redundant operations
-		// if (this.isAiCoreEnvSetup) {
-		// 	return
-		// }
+		if (this.isAiCoreEnvSetup) {
+			return
+		}
 
 		// Validate required credentials
 		this.validateCredentials()
