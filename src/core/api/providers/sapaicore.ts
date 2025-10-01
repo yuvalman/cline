@@ -5,6 +5,7 @@ import {
 	type Message as BedrockMessage,
 } from "@aws-sdk/client-bedrock-runtime"
 import { ChatMessage, OrchestrationClient } from "@sap-ai-sdk/orchestration"
+import { transformServiceBindingToDestination } from "@sap-cloud-sdk/connectivity"
 import { ModelInfo, SapAiCoreModelId, sapAiCoreDefaultModelId, sapAiCoreModels } from "@shared/api"
 import axios from "axios"
 import OpenAI from "openai"
@@ -357,6 +358,7 @@ export class SapAiCoreHandler implements ApiHandler {
 	private token?: Token
 	private deployments?: Deployment[]
 	private isAiCoreEnvSetup: boolean = false
+	private aiCoreDestination?: any
 
 	constructor(options: SapAiCoreHandlerOptions) {
 		this.options = options
@@ -370,6 +372,30 @@ export class SapAiCoreHandler implements ApiHandler {
 			!this.options.sapAiCoreBaseUrl
 		) {
 			throw new Error("Missing required SAP AI Core credentials. Please check your configuration.")
+		}
+	}
+
+	private async createAiCoreDestination() {
+		const aiCoreServiceCredentials = {
+			clientid: this.options.sapAiCoreClientId!,
+			clientsecret: this.options.sapAiCoreClientSecret!,
+			url: this.options.sapAiCoreTokenUrl!,
+			serviceurls: {
+				AI_API_URL: this.options.sapAiCoreBaseUrl!,
+			},
+		}
+
+		const destination = await transformServiceBindingToDestination({
+			credentials: aiCoreServiceCredentials,
+			label: "aicore",
+			name: "aicore",
+			tags: ["aicore"],
+		})
+
+		// Ensure the destination has the required url property for OrchestrationClient
+		return {
+			...destination,
+			url: destination.url || this.options.sapAiCoreBaseUrl!,
 		}
 	}
 
@@ -466,7 +492,7 @@ export class SapAiCoreHandler implements ApiHandler {
 	}
 
 	// TODO: support credentials changes after initial setup
-	private ensureAiCoreEnvSetup(): void {
+	private async ensureAiCoreEnvSetup(): Promise<void> {
 		// Only set up once to avoid redundant operations
 		if (this.isAiCoreEnvSetup) {
 			return
@@ -475,15 +501,8 @@ export class SapAiCoreHandler implements ApiHandler {
 		// Validate required credentials
 		this.validateCredentials()
 
-		const aiCoreServiceCredentials = {
-			clientid: this.options.sapAiCoreClientId!,
-			clientsecret: this.options.sapAiCoreClientSecret!,
-			url: this.options.sapAiCoreTokenUrl!,
-			serviceurls: {
-				AI_API_URL: this.options.sapAiCoreBaseUrl!,
-			},
-		}
-		process.env["AICORE_SERVICE_KEY"] = JSON.stringify(aiCoreServiceCredentials)
+		// Create and store the destination instead of setting environment variable
+		this.aiCoreDestination = await this.createAiCoreDestination()
 
 		// Mark as set up to avoid redundant calls
 		this.isAiCoreEnvSetup = true
@@ -491,8 +510,9 @@ export class SapAiCoreHandler implements ApiHandler {
 
 	private async *createMessageWithOrchestration(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
 		try {
-			// Ensure AI Core environment variable is set up (only runs once)
-			this.ensureAiCoreEnvSetup()
+			// Create destination using transform function
+			const destination = await this.createAiCoreDestination()
+
 			const model = this.getModel()
 
 			// Always include resource group, add deployment ID only when provided
@@ -520,6 +540,7 @@ export class SapAiCoreHandler implements ApiHandler {
 					},
 				},
 				orchestrationConfig,
+				destination,
 			)
 
 			const sapMessages = this.convertMessageParamToSAPMessages(messages)
