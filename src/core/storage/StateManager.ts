@@ -434,6 +434,7 @@ export class StateManager {
 			planModeFireworksModelId,
 			planModeSapAiCoreModelId,
 			planModeSapAiCoreDeploymentId,
+			planModeSapAiCoreOrchestrationDeploymentId,
 			planModeGroqModelId,
 			planModeGroqModelInfo,
 			planModeBasetenModelId,
@@ -468,6 +469,7 @@ export class StateManager {
 			actModeFireworksModelId,
 			actModeSapAiCoreModelId,
 			actModeSapAiCoreDeploymentId,
+			actModeSapAiCoreOrchestrationDeploymentId,
 			actModeGroqModelId,
 			actModeGroqModelInfo,
 			actModeBasetenModelId,
@@ -506,6 +508,7 @@ export class StateManager {
 			planModeFireworksModelId,
 			planModeSapAiCoreModelId,
 			planModeSapAiCoreDeploymentId,
+			planModeSapAiCoreOrchestrationDeploymentId,
 			planModeGroqModelId,
 			planModeGroqModelInfo,
 			planModeBasetenModelId,
@@ -541,6 +544,7 @@ export class StateManager {
 			actModeFireworksModelId,
 			actModeSapAiCoreModelId,
 			actModeSapAiCoreDeploymentId,
+			actModeSapAiCoreOrchestrationDeploymentId,
 			actModeGroqModelId,
 			actModeGroqModelInfo,
 			actModeBasetenModelId,
@@ -971,6 +975,9 @@ export class StateManager {
 				this.taskStateCache["planModeSapAiCoreModelId"] || this.globalStateCache["planModeSapAiCoreModelId"],
 			planModeSapAiCoreDeploymentId:
 				this.taskStateCache["planModeSapAiCoreDeploymentId"] || this.globalStateCache["planModeSapAiCoreDeploymentId"],
+			planModeSapAiCoreOrchestrationDeploymentId:
+				this.taskStateCache["planModeSapAiCoreOrchestrationDeploymentId"] ||
+				this.globalStateCache["planModeSapAiCoreOrchestrationDeploymentId"],
 			planModeGroqModelId: this.taskStateCache["planModeGroqModelId"] || this.globalStateCache["planModeGroqModelId"],
 			planModeGroqModelInfo: this.taskStateCache["planModeGroqModelInfo"] || this.globalStateCache["planModeGroqModelInfo"],
 			planModeBasetenModelId:
@@ -1034,6 +1041,9 @@ export class StateManager {
 				this.taskStateCache["actModeSapAiCoreModelId"] || this.globalStateCache["actModeSapAiCoreModelId"],
 			actModeSapAiCoreDeploymentId:
 				this.taskStateCache["actModeSapAiCoreDeploymentId"] || this.globalStateCache["actModeSapAiCoreDeploymentId"],
+			actModeSapAiCoreOrchestrationDeploymentId:
+				this.taskStateCache["actModeSapAiCoreOrchestrationDeploymentId"] ||
+				this.globalStateCache["actModeSapAiCoreOrchestrationDeploymentId"],
 			actModeGroqModelId: this.taskStateCache["actModeGroqModelId"] || this.globalStateCache["actModeGroqModelId"],
 			actModeGroqModelInfo: this.taskStateCache["actModeGroqModelInfo"] || this.globalStateCache["actModeGroqModelInfo"],
 			actModeBasetenModelId: this.taskStateCache["actModeBasetenModelId"] || this.globalStateCache["actModeBasetenModelId"],

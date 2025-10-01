@@ -27,5 +27,11 @@
 		"source.removeUnused.biome": "always",
 		"source.removeUnusedImports": "always",
 		"source.organizeImports.biome": "always"
-	}
+	},
+	// Debugging settings for stepping into library code
+	"debug.javascript.usePreview": true,
+	"debug.node.autoAttach": "on",
+	"debug.javascript.breakOnConditionalError": true,
+	"debug.allowBreakpointsEverywhere": true,
+	"debug.javascript.unmapMissingSources": true
 }

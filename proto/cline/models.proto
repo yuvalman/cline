@@ -348,7 +348,7 @@ message ModelsApiConfiguration {
   optional string plan_mode_fireworks_model_id = 118;
   optional string plan_mode_sap_ai_core_model_id = 119;
   optional string plan_mode_sap_ai_core_deployment_id = 120;
-  optional string plan_mode_sap_ai_core_orchestration_deployment_id = 131;
+  optional string plan_mode_sap_ai_core_orchestration_deployment_id = 133;
   optional string plan_mode_groq_model_id = 121;
   optional OpenRouterModelInfo plan_mode_groq_model_info = 122;
   optional string plan_mode_hugging_face_model_id = 123;
@@ -385,7 +385,7 @@ message ModelsApiConfiguration {
   optional string act_mode_fireworks_model_id = 218;
   optional string act_mode_sap_ai_core_model_id = 219;
   optional string act_mode_sap_ai_core_deployment_id = 220;
-  optional string act_mode_sap_ai_core_orchestration_deployment_id = 231;
+  optional string act_mode_sap_ai_core_orchestration_deployment_id = 233;
   optional string act_mode_groq_model_id = 221;
   optional OpenRouterModelInfo act_mode_groq_model_info = 222;
   optional string act_mode_hugging_face_model_id = 223;

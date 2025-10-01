@@ -26,6 +26,41 @@
 			}
 		},
 		{
+			"name": "Debug Extension with Library Source Maps",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--disable-workspace-trust",
+				"--disable-extensions",
+				"${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"preLaunchTask": "${defaultBuildTask}",
+			"sourceMaps": true,
+			"smartStep": false,
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"resolveSourceMapLocations": [
+				"${workspaceFolder}/**",
+				"!**/node_modules/**",
+				"**/node_modules/@sap-ai-sdk/**",
+				"**/node_modules/@sap-cloud-sdk/http-client/**",
+				"**/node_modules/@sap-cloud-sdk/connectivity/**",
+				"**/node_modules/@sap-cloud-sdk/util/**"
+			],
+			"trace": "verbose",
+			"env": {
+				"IS_DEV": "true",
+				"DEV_WORKSPACE_FOLDER": "${workspaceFolder}",
+				"CLINE_ENVIRONMENT": "production",
+				"NODE_OPTIONS": "--enable-source-maps"
+			}
+		},
+		{
 			"name": "Run Extension (staging)",
 			"type": "extensionHost",
 			"request": "launch",

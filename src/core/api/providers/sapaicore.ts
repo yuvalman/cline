@@ -24,6 +24,7 @@ interface SapAiCoreHandlerOptions extends CommonApiHandlerOptions {
 	thinkingBudgetTokens?: number
 	deploymentId?: string
 	reasoningEffort?: string
+	orchestrationDeploymentId?: string
 }
 
 interface Deployment {
@@ -467,9 +468,9 @@ export class SapAiCoreHandler implements ApiHandler {
 	// TODO: support credentials changes after initial setup
 	private ensureAiCoreEnvSetup(): void {
 		// Only set up once to avoid redundant operations
-		if (this.isAiCoreEnvSetup) {
-			return
-		}
+		// if (this.isAiCoreEnvSetup) {
+		// 	return
+		// }
 
 		// Validate required credentials
 		this.validateCredentials()
@@ -493,6 +494,18 @@ export class SapAiCoreHandler implements ApiHandler {
 			// Ensure AI Core environment variable is set up (only runs once)
 			this.ensureAiCoreEnvSetup()
 			const model = this.getModel()
+
+			// Handle orchestration deployment ID with fallback to resource group
+			let orchestrationConfig: { deploymentId?: string; resourceGroup?: string }
+
+			if (this.options.orchestrationDeploymentId) {
+				orchestrationConfig = { deploymentId: this.options.orchestrationDeploymentId }
+			} else {
+				// Fallback to resource group when no orchestration deployment ID is provided
+				console.log("No orchestration deployment ID provided, falling back to resource group")
+				orchestrationConfig = { resourceGroup: this.options.sapAiResourceGroup || "default" }
+			}
+
 			const orchestrationClient = new OrchestrationClient(
 				{
 					promptTemplating: {
@@ -509,7 +522,7 @@ export class SapAiCoreHandler implements ApiHandler {
 						},
 					},
 				},
-				{ resourceGroup: this.options.sapAiResourceGroup || "default" },
+				orchestrationConfig,
 			)
 
 			const sapMessages = this.convertMessageParamToSAPMessages(messages)

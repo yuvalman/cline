@@ -36,6 +36,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 	// State for dynamic model fetching
 	const [sapAiCoreModelDeployments, setSapAiCoreModelDeployments] = useState<SapAiCoreModelDeployment[]>([])
 	const [orchestrationAvailable, setOrchestrationAvailable] = useState<boolean>(false)
+	const [orchestrationDeploymentId, setOrchestrationDeploymentId] = useState<string | undefined>(undefined)
 	const [hasCheckedOrchestration, setHasCheckedOrchestration] = useState<boolean>(false)
 	const [isLoadingModels, setIsLoadingModels] = useState(false)
 	const [modelError, setModelError] = useState<string | null>(null)
@@ -52,6 +53,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 		if (!hasRequiredCredentials) {
 			setSapAiCoreModelDeployments([])
 			setOrchestrationAvailable(false)
+			setOrchestrationDeploymentId(undefined)
 			setHasCheckedOrchestration(false)
 			return
 		}
@@ -73,10 +75,12 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			if (response) {
 				setSapAiCoreModelDeployments(response.deployments || [])
 				setOrchestrationAvailable(response.orchestrationAvailable || false)
+				setOrchestrationDeploymentId(response.orchestrationDeploymentId)
 				setHasCheckedOrchestration(true)
 			} else {
 				setSapAiCoreModelDeployments([])
 				setOrchestrationAvailable(false)
+				setOrchestrationDeploymentId(undefined)
 				setHasCheckedOrchestration(true)
 			}
 		} catch (error) {
@@ -84,6 +88,7 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			setModelError("Failed to fetch models. Please check your configuration.")
 			setSapAiCoreModelDeployments([])
 			setOrchestrationAvailable(false)
+			setOrchestrationDeploymentId(undefined)
 			setHasCheckedOrchestration(true)
 		} finally {
 			setIsLoadingModels(false)
@@ -109,6 +114,31 @@ export const SapAiCoreProvider = ({ showModelOptions, isPopup, currentMode }: Sa
 			handleFieldChange("sapAiCoreUseOrchestrationMode", false)
 		}
 	}, [hasCheckedOrchestration, orchestrationAvailable, apiConfiguration?.sapAiCoreUseOrchestrationMode, handleFieldChange])
+
+	// Auto-fix orchestration deployment ID when it changes (prevent redundant updates)
+	useEffect(() => {
+		if (!orchestrationDeploymentId) {
+			return
+		}
+
+		// Get current stored orchestration deployment ID
+		const currentStoredId =
+			apiConfiguration?.[
+				currentMode === "plan"
+					? "planModeSapAiCoreOrchestrationDeploymentId"
+					: "actModeSapAiCoreOrchestrationDeploymentId"
+			]
+
+		// Only update if it's actually different
+		if (currentStoredId !== orchestrationDeploymentId) {
+			handleFieldChange(
+				currentMode === "plan"
+					? "planModeSapAiCoreOrchestrationDeploymentId"
+					: "actModeSapAiCoreOrchestrationDeploymentId",
+				orchestrationDeploymentId,
+			)
+		}
+	}, [orchestrationDeploymentId, apiConfiguration, currentMode, handleFieldChange])
 
 	// Handle model selection
 	const handleModelChange = useCallback(
